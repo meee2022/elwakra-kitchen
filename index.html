@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>مطابخ الجنوب للمأكولات الشعبية</title>
+<meta name="theme-color" content="#A63C22">
+<link rel="icon" href="pos/icons/favicon.png">
+<link rel="stylesheet" href="pos/fonts/cairo.css">
+<style>
+:root{
+  --primary:#A63C22; --primary-dark:#8A2F19; --primary-light:#C25232; --primary-deep:#6B2211;
+  --accent:#C08A3E; --accent-light:#DFC08A;
+  --bg:#FBF7F3; --card:#fff; --border:#EBE0D6; --ink:#2A1D17; --muted:#8B7A6D;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh; background:var(--bg); color:var(--ink);
+  font-family:'Cairo',system-ui,'Segoe UI',Tahoma,sans-serif; line-height:1.7;
+  display:grid; place-items:center; padding:24px;
+  background-image:
+    radial-gradient(circle at 100% 0%, rgba(192,138,62,.10) 0%, transparent 44%),
+    radial-gradient(circle at 0% 100%, rgba(166,60,34,.07) 0%, transparent 40%);
+}
+.wrap{width:100%; max-width:640px}
+
+.hero{
+  background:linear-gradient(118deg,var(--primary-deep) 0%,var(--primary) 52%,var(--primary-light) 100%);
+  color:#fff; border-radius:24px; padding:30px 26px; text-align:center;
+  position:relative; overflow:hidden; margin-bottom:18px;
+  box-shadow:0 20px 48px -18px rgba(107,34,17,.6);
+}
+.hero::after{
+  content:''; position:absolute; inset-inline-end:-70px; top:-110px;
+  width:300px; height:300px; border-radius:50%;
+  background:radial-gradient(circle,rgba(223,192,138,.32) 0%,transparent 68%);
+}
+.hero > *{position:relative; z-index:1}
+.logo{
+  width:82px; height:82px; margin:0 auto 14px; border-radius:50%; background:#2E2521;
+  display:grid; place-items:center; font-size:22px; font-weight:400; letter-spacing:2px;
+  border:2px solid rgba(223,192,138,.7); box-shadow:0 8px 24px -6px rgba(0,0,0,.5);
+}
+.hero h1{margin:0; font-size:23px; font-weight:800; line-height:1.35}
+.hero .en{font-size:12.5px; opacity:.82; letter-spacing:.5px; font-weight:600; margin-top:2px}
+.hero .sl{font-size:12px; color:var(--accent-light); font-weight:700; margin-top:8px}
+
+.links{display:grid; gap:13px}
+a.tile{
+  display:flex; align-items:center; gap:15px; text-decoration:none; color:inherit;
+  background:var(--card); border:1px solid var(--border); border-radius:18px; padding:18px 20px;
+  box-shadow:0 1px 2px rgba(42,29,23,.05), 0 10px 28px -16px rgba(166,60,34,.2);
+  transition:transform .22s var(--ease), box-shadow .22s var(--ease), border-color .22s var(--ease);
+}
+a.tile:hover{
+  transform:translateY(-3px); border-color:transparent;
+  box-shadow:0 18px 40px -18px rgba(166,60,34,.35), 0 0 0 1px rgba(192,138,62,.42);
+}
+.orb{
+  width:50px; height:50px; border-radius:14px; flex:none; display:grid; place-items:center;
+  background:linear-gradient(135deg,var(--primary-light),var(--primary));
+  color:var(--accent-light);
+}
+.orb.alt{background:linear-gradient(135deg,#3D2C23,var(--ink))}
+.orb svg{width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.9;
+         stroke-linecap:round; stroke-linejoin:round}
+.tile .t{font-weight:800; font-size:16px}
+.tile .d{font-size:12.5px; color:var(--muted); font-weight:500}
+.tile .go{margin-inline-start:auto; color:var(--muted); font-size:20px; line-height:1}
+
+footer{text-align:center; margin-top:20px; font-size:11.5px; color:var(--muted); line-height:1.9}
+footer b{color:var(--ink); font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="logo">STDK</div>
+    <h1>مطابخ الجنوب للمأكولات الشعبية</h1>
+    <div class="en">Southern Traditional Dishes Kitchens</div>
+    <div class="sl">طبّاخ ـ بنكهة أول</div>
+  </div>
+
+  <div class="links">
+    <a class="tile" href="pos/">
+      <div class="orb">
+        <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h12"/><circle cx="19" cy="18" r="2.4"/></svg>
+      </div>
+      <div>
+        <div class="t">نقطة البيع</div>
+        <div class="d">تسجيل الفواتير وطباعتها · للكاشير</div>
+      </div>
+      <div class="go">‹</div>
+    </a>
+
+    <a class="tile" href="pos/dashboard.html">
+      <div class="orb alt">
+        <svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>
+      </div>
+      <div>
+        <div class="t">متابعة المبيعات</div>
+        <div class="d">التقارير والإحصائيات · للمالك</div>
+      </div>
+      <div class="go">‹</div>
+    </a>
+  </div>
+
+  <footer>
+    <div>س.ت <b>27781/3</b> &nbsp;·&nbsp; ص.ب <b>12488</b> — الدوحة، قطر</div>
+    <div>هاتف <b>44760614</b> &nbsp;·&nbsp; جوال <b>66315591</b></div>
+  </footer>
+
+</div>
+</body>
+</html>
