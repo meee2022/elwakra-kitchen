@@ -28,9 +28,11 @@
 
 | الرابط | لمَن |
 |---|---|
-| **https://meee2022.github.io/elwakra-kitchen/** | صفحة الدخول |
+| **https://elwakra-kitchen.vercel.app/** | صفحة الدخول |
 | `…/pos/` | نقطة البيع — للكاشير |
 | `…/pos/dashboard.html` | متابعة المبيعات — للمالك |
+
+مرآة على GitHub Pages: https://meee2022.github.io/elwakra-kitchen/
 
 يُثبَّت كتطبيق من المتصفح ويعمل بعدها بدون إنترنت.
 
