@@ -7,6 +7,7 @@
 <meta name="theme-color" content="#A63C22">
 <link rel="icon" href="icons/favicon.png">
 <link rel="stylesheet" href="fonts/cairo.css">
+<script src="i18n.js?v=11"></script>
 <style>
 :root{
   --brand:#A63C22; --brand-dark:#7C2D17; --cream:#FAF6F1; --paper:#fff;
@@ -104,30 +105,31 @@ input,select,.card,.row,.stat{min-width:0;max-width:100%}
 <header>
   <div class="logo">STDK</div>
   <div style="flex:1;min-width:0">
-    <h1>متابعة المبيعات</h1>
-    <div class="sub">مطابخ الجنوب للمأكولات الشعبية</div>
+    <h1 data-i18n="متابعة المبيعات">متابعة المبيعات</h1>
+    <div class="sub" data-i18n="مطابخ الجنوب للمأكولات الشعبية">مطابخ الجنوب للمأكولات الشعبية</div>
   </div>
-  <button class="btn" id="btnRefresh" style="background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.3);color:#fff" hidden>تحديث</button>
+  <button class="btn" id="btnLang" type="button" style="margin-inline-end:8px">English</button>
+  <button class="btn" id="btnRefresh" style="background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.3);color:#fff" hidden data-i18n="تحديث">تحديث</button>
 </header>
 
 <main>
 
 <!-- إعداد الاتصال -->
 <div class="card" id="setup">
-  <div class="card-h">الاتصال بقاعدة البيانات</div>
+  <div class="card-h" data-i18n="الاتصال بقاعدة البيانات">الاتصال بقاعدة البيانات</div>
   <div class="card-b">
     <div id="setupMsg"></div>
     <div style="margin-bottom:11px">
-      <label>رابط النشرة (Deployment URL)</label>
+      <label data-i18n="رابط النشرة (Deployment URL)">رابط النشرة (Deployment URL)</label>
       <input type="text" id="url" dir="ltr" placeholder="https://xxxx.convex.cloud">
     </div>
     <div style="margin-bottom:14px">
-      <label>مفتاح المزامنة</label>
-      <input type="password" id="key" dir="ltr" placeholder="نفس المفتاح المضبوط في Convex">
+      <label data-i18n="مفتاح المزامنة">مفتاح المزامنة</label>
+      <input type="password" id="key" dir="ltr" placeholder="نفس المفتاح المضبوط في Convex" data-i18n-ph="نفس المفتاح المضبوط في Convex">
     </div>
     <div class="row">
-      <button class="btn btn-primary" id="btnConnect">اتصال</button>
-      <span class="muted" style="font-size:12.5px">يُحفظ على هذا الجهاز فقط.</span>
+      <button class="btn btn-primary" id="btnConnect" data-i18n="اتصال">اتصال</button>
+      <span class="muted" style="font-size:12.5px" data-i18n="يُحفظ على هذا الجهاز فقط.">يُحفظ على هذا الجهاز فقط.</span>
     </div>
   </div>
 </div>
@@ -138,15 +140,15 @@ input,select,.card,.row,.stat{min-width:0;max-width:100%}
     <div class="card-h">
       الفترة
       <div class="chips right" id="quick">
-        <button class="chip on" data-q="today">اليوم</button>
-        <button class="chip" data-q="week">آخر 7 أيام</button>
-        <button class="chip" data-q="month">هذا الشهر</button>
-        <button class="chip" data-q="year">هذه السنة</button>
+        <button class="chip on" data-q="today" data-i18n="اليوم">اليوم</button>
+        <button class="chip" data-q="week" data-i18n="آخر 7 أيام">آخر 7 أيام</button>
+        <button class="chip" data-q="month" data-i18n="هذا الشهر">هذا الشهر</button>
+        <button class="chip" data-q="year" data-i18n="هذه السنة">هذه السنة</button>
       </div>
     </div>
     <div class="card-b row">
-      <div style="flex:1;min-width:130px"><label>من</label><input type="date" id="from"></div>
-      <div style="flex:1;min-width:130px"><label>إلى</label><input type="date" id="to"></div>
+      <div style="flex:1;min-width:130px"><label data-i18n="من">من</label><input type="date" id="from"></div>
+      <div style="flex:1;min-width:130px"><label data-i18n="إلى">إلى</label><input type="date" id="to"></div>
     </div>
   </div>
 
@@ -154,25 +156,25 @@ input,select,.card,.row,.stat{min-width:0;max-width:100%}
   <div class="stats" id="stats"></div>
 
   <div class="card">
-    <div class="card-h">الأصناف الأكثر مبيعاً</div>
+    <div class="card-h" data-i18n="الأصناف الأكثر مبيعاً">الأصناف الأكثر مبيعاً</div>
     <div style="max-height:60vh;overflow:auto">
-      <table><thead><tr><th style="width:34px">#</th><th>الصنف</th>
-        <th style="width:60px">الكمية</th><th style="width:88px">القيمة</th><th style="width:80px"></th></tr></thead>
+      <table><thead><tr><th style="width:34px">#</th><th data-i18n="الصنف">الصنف</th>
+        <th style="width:60px" data-i18n="الكمية">الكمية</th><th style="width:88px" data-i18n="القيمة">القيمة</th><th style="width:80px"></th></tr></thead>
         <tbody id="items"></tbody></table>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-h">المبيعات اليومية</div>
+    <div class="card-h" data-i18n="المبيعات اليومية">المبيعات اليومية</div>
     <div style="max-height:50vh;overflow:auto">
-      <table><thead><tr><th>التاريخ</th><th style="width:64px">فواتير</th>
-        <th style="width:64px">وجبات</th><th style="width:96px">الإجمالي</th></tr></thead>
+      <table><thead><tr><th data-i18n="التاريخ">التاريخ</th><th style="width:64px" data-i18n="فواتير">فواتير</th>
+        <th style="width:64px" data-i18n="وجبات">وجبات</th><th style="width:96px" data-i18n="الإجمالي">الإجمالي</th></tr></thead>
         <tbody id="days"></tbody></table>
     </div>
   </div>
 
   <div class="row" style="margin-bottom:24px">
-    <button class="btn" id="btnLogout">تغيير بيانات الاتصال</button>
+    <button class="btn" id="btnLogout" data-i18n="تغيير بيانات الاتصال">تغيير بيانات الاتصال</button>
     <span class="muted right" id="lastSync" style="font-size:12px"></span>
   </div>
 </div>
@@ -211,9 +213,9 @@ async function call(path, args) {
 /* ---------- الاتصال ---------- */
 $('#btnConnect').addEventListener('click', async () => {
   const url = $('#url').value.trim(), key = $('#key').value.trim();
-  if (!url || !key) return msg('#setupMsg', 'اكتب رابط النشرة والمفتاح.', 'err');
+  if (!url || !key) return msg('#setupMsg', t('اكتب رابط النشرة والمفتاح.'), 'err');
   cfg = { url, key };
-  msg('#setupMsg', 'جاري الاتصال…', 'info');
+  msg('#setupMsg', t('جاري الاتصال…'), 'info');
   try {
     await call('invoices:summary', { from: todayISO(), to: todayISO() });
     localStorage.setItem(KEY, JSON.stringify(cfg));
@@ -221,7 +223,7 @@ $('#btnConnect').addEventListener('click', async () => {
     showBoard();
   } catch (e) {
     cfg = null;
-    msg('#setupMsg', 'فشل الاتصال: ' + esc(e.message), 'err');
+    msg('#setupMsg', t('فشل الاتصال: ') + esc(e.message), 'err');
   }
 });
 
@@ -266,7 +268,7 @@ function showBoard() {
 const statValue = value => {
   const text = String(value);
   return text.endsWith(' ر.ق')
-    ? `<bdi class="stat-number" dir="ltr">${esc(text.slice(0, -4))}</bdi><span class="stat-currency">ر.ق</span>`
+    ? `<bdi class="stat-number" dir="ltr">${esc(text.slice(0, -4))}</bdi><span class="stat-currency" data-i18n="ر.ق">ر.ق</span>`
     : `<bdi class="stat-number" dir="ltr">${esc(text)}</bdi>`;
 };
 const stat = (l, v, s, cls) =>
@@ -274,18 +276,18 @@ const stat = (l, v, s, cls) =>
 
 async function refresh() {
   if (!cfg) return;
-  msg('#boardMsg', 'جاري التحميل…', 'info');
+  msg('#boardMsg', t('جاري التحميل…'), 'info');
   try {
     const r = await call('invoices:summary', { from: $('#from').value, to: $('#to').value });
     msg('#boardMsg', '');
 
     $('#stats').innerHTML =
-      stat('إجمالي المبيعات', money(r.total) + ' ر.ق', r.invoices + ' فاتورة') +
-      stat('الوجبات المباعة', r.units, 'وحدة', 'g') +
-      stat('نقداً', money(r.cash) + ' ر.ق', '', 'g') +
-      stat('على الحساب', money(r.credit) + ' ر.ق', 'غير محصّل: ' + money(r.unpaid), 'w') +
-      stat('متوسط الفاتورة', money(r.invoices ? r.total / r.invoices : 0) + ' ر.ق', '') +
-      stat('فواتير ملغاة', r.voided, '');
+      stat(t('إجمالي المبيعات'), money(r.total) + ' ' + t('ر.ق'), r.invoices + ' ' + t('فاتورة')) +
+      stat(t('عدد الوجبات المباعة'), r.units, t('وحدة'), 'g') +
+      stat(t('نقداً'), money(r.cash) + ' ' + t('ر.ق'), '', 'g') +
+      stat(t('على الحساب'), money(r.credit) + ' ' + t('ر.ق'), t('غير محصّل: ') + money(r.unpaid), 'w') +
+      stat(t('متوسط الفاتورة'), money(r.invoices ? r.total / r.invoices : 0) + ' ' + t('ر.ق'), '') +
+      stat(t('فواتير ملغاة'), r.voided, '');
 
     const max = r.topItems.length ? r.topItems[0].qty : 1;
     $('#items').innerHTML = r.topItems.length
@@ -294,22 +296,34 @@ async function refresh() {
           <td class="num"><b>${it.qty}</b></td><td class="num">${money(it.val)}</td>
           <td><div class="bar"><div style="width:${(it.qty / max * 100).toFixed(1)}%"></div></div></td>
         </tr>`).join('')
-      : '<tr><td colspan="5"><div class="empty">لا توجد مبيعات في هذه الفترة</div></td></tr>';
+      : '<tr><td colspan="5"><div class="empty" data-i18n="لا توجد مبيعات في هذه الفترة">لا توجد مبيعات في هذه الفترة</div></td></tr>';
 
     $('#days').innerHTML = r.days.length
       ? r.days.map(d => `<tr><td class="num">${fmtDate(d.date)}</td><td class="num">${d.n}</td>
           <td class="num">${d.units}</td><td class="num"><b>${money(d.total)}</b></td></tr>`).join('')
-      : '<tr><td colspan="4"><div class="empty">لا توجد بيانات</div></td></tr>';
+      : '<tr><td colspan="4"><div class="empty" data-i18n="لا توجد بيانات">لا توجد بيانات</div></td></tr>';
 
     $('#lastSync').textContent = r.lastSync
-      ? 'آخر فاتورة وصلت: ' + new Date(r.lastSync).toLocaleString('ar-QA')
-      : 'لم تصل أي فاتورة بعد';
+      ? t('آخر فاتورة وصلت: ') + new Date(r.lastSync).toLocaleString(I18n.get() === 'en' ? 'en-GB' : 'ar-QA')
+      : t('لم تصل أي فاتورة بعد');
+    I18n.applyStatic();   // النصوص الموسومة داخل الجداول المرسومة حديثاً
   } catch (e) {
-    msg('#boardMsg', 'تعذّر التحميل: ' + esc(e.message), 'err');
+    msg('#boardMsg', t('تعذّر التحميل: ') + esc(e.message), 'err');
   }
 }
 
+/* ---------- اللغة ---------- */
+const LANG_KEY = 'stdk_dashboard_lang';
+$('#btnLang').addEventListener('click', () => {
+  const next = I18n.get() === 'ar' ? 'en' : 'ar';
+  try { localStorage.setItem(LANG_KEY, next); } catch (e) {}
+  I18n.set(next, () => { if (cfg && !$('#board').hidden) refresh(); });
+});
+
 /* ---------- التشغيل ---------- */
+let savedLang = 'ar';
+try { savedLang = localStorage.getItem(LANG_KEY) || 'ar'; } catch (e) {}
+I18n.set(savedLang);
 loadCfg();
 if (cfg && cfg.url && cfg.key) showBoard();
 else {

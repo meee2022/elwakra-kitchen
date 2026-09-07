@@ -96,6 +96,15 @@ a{color:var(--primary); text-decoration:none}
 .topbar .sub{font-size:11px; opacity:.78; letter-spacing:.6px; font-weight:500}
 .clock{font-size:12.5px; opacity:.9; text-align:left; white-space:nowrap; font-weight:500}
 
+.lang-btn{
+  font-size:12.5px; font-weight:700; padding:7px 15px; border-radius:999px;
+  background:var(--surface); color:var(--primary); border:1px solid var(--border);
+  white-space:nowrap; flex:none; transition:all .2s var(--ease);
+}
+.lang-btn:hover{background:var(--primary); border-color:var(--primary); color:#fff}
+/* في الإنجليزية تعود الأسماء اللاتينية لاتجاه اليسار */
+body.lang-en .p-en, body.lang-en .ci-en{direction:ltr; text-align:left}
+
 .sync-badge{
   font-size:11.5px; font-weight:700; padding:5px 13px; border-radius:999px;
   background:rgba(255,255,255,.14); color:#fff; white-space:nowrap; flex:none;

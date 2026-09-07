@@ -144,7 +144,7 @@ async function load() {
   catch (e) { db = seed(); }
   normalize();
 
-  if (migrated) { await flush(); toast('تم نقل بياناتك إلى قاعدة البيانات المحلية', 'ok'); }
+  if (migrated) { await flush(); toast(t('تم نقل بياناتك إلى قاعدة البيانات المحلية'), 'ok'); }
   await dailySnapshot();
 }
 
@@ -166,7 +166,7 @@ async function flush() {
     try { await idbPut('main', json); return; } catch (e) { /* نجرّب البديل */ }
   }
   try { localStorage.setItem(STORE_KEY, json); }
-  catch (e) { toast('تعذّر حفظ البيانات — اعمل نسخة احتياطية فوراً وأعد تشغيل المتصفح.', 'err'); }
+  catch (e) { toast(t('تعذّر حفظ البيانات — اعمل نسخة احتياطية فوراً وأعد تشغيل المتصفح.'), 'err'); }
 }
 function save() { flush(); }
 
@@ -185,8 +185,8 @@ $('#nav').addEventListener('click', e => {
   $$('#nav button').forEach(x => x.classList.toggle('active', x === b));
   $$('#nav button').forEach(x => x === b ? x.setAttribute('aria-current', 'page') : x.removeAttribute('aria-current'));
   const copy = pageCopy[b.dataset.page];
-  $('#pageTitle').textContent = copy[0];
-  $('#pageDescription').textContent = copy[1];
+  $('#pageTitle').textContent = t(copy[0]);
+  $('#pageDescription').textContent = t(copy[1]);
   $$('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + b.dataset.page));
   ({ invoices: renderInvoices, products: renderProducts, reports: renderReports, settings: fillSettings }[b.dataset.page] || (() => {}))();
   measureAppbar();
@@ -206,7 +206,7 @@ $('.pos-switch').addEventListener('click', e => {
 
 function renderCatTabs() {
   $('#catTabs').innerHTML = CATEGORIES
-    .map(c => `<button data-cat="${c.key}" aria-pressed="${c.key === activeCat}" class="${c.key === activeCat ? 'active' : ''}">${c.label}</button>`).join('');
+    .map(c => `<button data-cat="${c.key}" aria-pressed="${c.key === activeCat}" class="${c.key === activeCat ? 'active' : ''}">${catLabel(c.key)}</button>`).join('');
 }
 $('#catTabs').addEventListener('click', e => {
   const b = e.target.closest('button[data-cat]');
@@ -222,20 +222,20 @@ function renderProdGrid() {
     p.active &&
     (q ? (p.ar.toLowerCase().includes(q) || (p.en || '').toLowerCase().includes(q)) : p.cat === activeCat)
   );
-  $('#productCount').textContent = `${list.length} صنف`;
+  $('#productCount').textContent = `${list.length} ${t('صنف')}`;
   $('#prodGrid').innerHTML = list.length ? list.map(p => `
-    <button class="prod" data-id="${p.id}" aria-label="إضافة ${esc(p.ar)}، ${money(p.price)} ريال">
-      <div class="product-meta"><span>${esc(CATEGORIES.find(c => c.key === p.cat)?.label || '')}</span><span class="product-add" aria-hidden="true">+</span></div>
+    <button class="prod" data-id="${p.id}" aria-label="${esc(I18n.itemName(p))} ${money(p.price)}">
+      <div class="product-meta"><span>${esc(catLabel(p.cat))}</span><span class="product-add" aria-hidden="true">+</span></div>
       <div>
-        <div class="p-ar">${esc(p.ar)}</div>
-        ${p.en ? `<div class="p-en">${esc(p.en)}</div>` : ''}
+        <div class="p-ar">${esc(I18n.itemName(p))}</div>
+        ${I18n.itemAlt(p) ? `<div class="p-en">${esc(I18n.itemAlt(p))}</div>` : ''}
       </div>
       <div class="p-foot">
-        <span class="p-price">${money(p.price)}<span>ر.ق</span></span>
-        ${p.weight ? `<span class="p-wt">${p.weight} جم</span>` : ''}
+        <span class="p-price">${money(p.price)}<span>${t('ر.ق')}</span></span>
+        ${p.weight ? `<span class="p-wt">${p.weight} ${t('جم')}</span>` : ''}
       </div>
     </button>`).join('')
-    : `<div class="empty search-empty"><strong>لا توجد أصناف مطابقة</strong><span>جرّب اسمًا آخر أو امسح البحث لعرض القسم.</span></div>`;
+    : `<div class="empty search-empty"><strong>${t('لا توجد أصناف مطابقة')}</strong><span>${t('جرّب اسمًا آخر أو امسح البحث لعرض القسم.')}</span></div>`;
 }
 $('#prodGrid').addEventListener('click', e => {
   const b = e.target.closest('.prod');
@@ -255,26 +255,28 @@ function renderCart() {
   $('#cartCount').textContent = cart.reduce((n, item) => n + item.qty, 0);
   $('#mobileCartCount').textContent = $('#cartCount').textContent;
   const box = $('#cartItems');
-  if (!cart.length) { box.innerHTML = `<div class="empty cart-empty"><span class="empty-receipt" aria-hidden="true">≡</span><strong>ابدأ طلبًا جديدًا</strong><span>اختَر صنفًا من القائمة لإضافته هنا.</span></div>`; }
+  if (!cart.length) { box.innerHTML = `<div class="empty cart-empty"><span class="empty-receipt" aria-hidden="true">≡</span><strong>${t('ابدأ طلبًا جديدًا')}</strong><span>${t('اختَر صنفًا من القائمة لإضافته هنا.')}</span></div>`; }
   else {
-    box.innerHTML = cart.map((l, i) => `
+    box.innerHTML = cart.map((l, i) => {
+      const nm = esc(I18n.itemName(l)), alt = esc(I18n.itemAlt(l));
+      return `
       <div class="ci">
         <div>
-          <div class="ci-name">${esc(l.ar)}</div>
-          ${l.en ? `<div class="ci-en">${esc(l.en)}</div>` : ''}
+          <div class="ci-name">${nm}</div>
+          ${alt ? `<div class="ci-en">${alt}</div>` : ''}
           <div class="ci-ctl" style="margin-top:5px">
-            <button class="qtybtn" aria-label="تقليل كمية ${esc(l.ar)}" data-act="dec" data-i="${i}">−</button>
-            <input class="qty" aria-label="كمية ${esc(l.ar)}" type="number" min="1" step="1" value="${l.qty}" data-act="qty" data-i="${i}">
-            <button class="qtybtn" aria-label="زيادة كمية ${esc(l.ar)}" data-act="inc" data-i="${i}">+</button>
+            <button class="qtybtn" aria-label="${I18n.t2('تقليل كمية {0}', nm)}" data-act="dec" data-i="${i}">−</button>
+            <input class="qty" aria-label="${I18n.t2('كمية {0}', nm)}" type="number" min="1" step="1" value="${l.qty}" data-act="qty" data-i="${i}">
+            <button class="qtybtn" aria-label="${I18n.t2('زيادة كمية {0}', nm)}" data-act="inc" data-i="${i}">+</button>
             <span class="muted" style="font-size:11px">×</span>
-            <input class="pr" aria-label="سعر ${esc(l.ar)}" type="number" min="0" step="0.25" value="${l.price}" data-act="price" data-i="${i}">
+            <input class="pr" aria-label="${I18n.t2('سعر {0}', nm)}" type="number" min="0" step="0.25" value="${l.price}" data-act="price" data-i="${i}">
           </div>
         </div>
         <div style="display:flex; flex-direction:column; align-items:flex-end; justify-content:space-between">
-          <button class="rm" data-act="rm" data-i="${i}" title="حذف">&times;</button>
+          <button class="rm" data-act="rm" data-i="${i}" title="${t('حذف')}">&times;</button>
           <div class="ci-total">${money(l.qty * l.price)}</div>
         </div>
-      </div>`).join('');
+      </div>`; }).join('');
   }
   updateTotals();
 }
@@ -327,9 +329,9 @@ function clearCart() {
   $('#payType').value = 'cash';
   $('#invDate').value = todayISO();
   renderCart();
-  $('#nextNoLabel').textContent = 'رقم الفاتورة القادم: ' + db.settings.nextInvoiceNo;
+  $('#nextNoLabel').textContent = t('رقم الفاتورة القادم: ') + db.settings.nextInvoiceNo;
 }
-$('#btnClear').addEventListener('click', () => { if (!cart.length || confirm('إفراغ الفاتورة الحالية؟')) clearCart(); });
+$('#btnClear').addEventListener('click', () => { if (!cart.length || confirm(t('إفراغ الفاتورة الحالية؟'))) clearCart(); });
 
 function saveInvoice(print) {
   if (!cart.length) return;
@@ -367,7 +369,7 @@ function saveInvoice(print) {
   save();
   Sync.run(false);
   clearCart();
-  toast(`تم حفظ الفاتورة رقم ${inv.no} — ${money(inv.total)} ر.ق`, 'ok');
+  toast(I18n.t2('تم حفظ الفاتورة رقم {0} — {1} ر.ق', inv.no, money(inv.total)), 'ok');
   if (print) printInvoice(inv);
 }
 $('#btnSave').addEventListener('click', () => saveInvoice(true));
@@ -713,10 +715,10 @@ function renderInvoices() {
   const unpaid = act.filter(v => v.type === 'credit' && !v.paid);
 
   $('#invStats').innerHTML = `
-    ${stat('مبيعات اليوم', money(tSales.reduce((s, v) => s + v.total, 0)) + ' ر.ق', tSales.length + ' فاتورة', 'g')}
-    ${stat('نقداً اليوم', money(tSales.filter(v => v.type === 'cash').reduce((s, v) => s + v.total, 0)) + ' ر.ق', '', '')}
-    ${stat('مستحقات آجلة', money(unpaid.reduce((s, v) => s + v.total, 0)) + ' ر.ق', unpaid.length + ' فاتورة غير محصّلة', 'w')}
-    ${stat('إجمالي الفواتير', act.length, 'منذ بداية التشغيل', 'd')}`;
+    ${stat(t('مبيعات اليوم'), money(tSales.reduce((s, v) => s + v.total, 0)) + ' ' + t('ر.ق'), tSales.length + ' ' + t('فاتورة'), 'g')}
+    ${stat(t('نقداً اليوم'), money(tSales.filter(v => v.type === 'cash').reduce((s, v) => s + v.total, 0)) + ' ' + t('ر.ق'), '', '')}
+    ${stat(t('مستحقات آجلة'), money(unpaid.reduce((s, v) => s + v.total, 0)) + ' ' + t('ر.ق'), unpaid.length + ' ' + t('فاتورة غير محصّلة'), 'w')}
+    ${stat(t('إجمالي الفواتير'), act.length, t('منذ بداية التشغيل'), 'd')}`;
 
   $('#invBody').innerHTML = list.length ? list.map(v => `
     <tr>
@@ -728,15 +730,16 @@ function renderInvoices() {
       <td class="num"><b>${money(v.total)}</b></td>
       <td>${statusBadge(v)}</td>
       <td class="acts">
-        <button class="btn btn-sm" data-v="${v.no}" data-a="view">عرض</button>
-        <button class="btn btn-sm" data-v="${v.no}" data-a="print">طباعة</button>
-        ${v.status === 'active' && v.type === 'credit' && !v.paid ? `<button class="btn btn-sm" data-v="${v.no}" data-a="pay">تحصيل</button>` : ''}
-        ${v.status === 'active' ? `<button class="btn btn-sm btn-danger" data-v="${v.no}" data-a="void">إلغاء</button>` : ''}
+        <button class="btn btn-sm" data-v="${v.no}" data-a="view">${t('عرض')}</button>
+        <button class="btn btn-sm" data-v="${v.no}" data-a="print">${t('طباعة')}</button>
+        ${v.status === 'active' && v.type === 'credit' && !v.paid ? `<button class="btn btn-sm" data-v="${v.no}" data-a="pay">${t('تحصيل')}</button>` : ''}
+        ${v.status === 'active' ? `<button class="btn btn-sm btn-danger" data-v="${v.no}" data-a="void">${t('إلغاء')}</button>` : ''}
       </td>
     </tr>`).join('')
-    : `<tr><td colspan="8"><div class="empty">لا توجد فواتير مطابقة</div></td></tr>`;
+    : `<tr><td colspan="8"><div class="empty">${t('لا توجد فواتير مطابقة')}</div></td></tr>`;
 
-  $('#invCount').textContent = `${list.length} فاتورة · إجمالي ${money(list.filter(v => v.status === 'active').reduce((s, v) => s + v.total, 0))} ر.ق`;
+  $('#invCount').textContent = I18n.t2('{0} فاتورة · إجمالي {1} ر.ق',
+    list.length, money(list.filter(v => v.status === 'active').reduce((s, v) => s + v.total, 0)));
 }
 const statValue = value => {
   const text = String(value);
@@ -746,9 +749,10 @@ const statValue = value => {
 };
 const stat = (lbl, val, sm, cls) => `<div class="stat ${cls}"><div class="lbl">${lbl}</div><div class="val">${statValue(val)}</div><div class="sm">${sm || '&nbsp;'}</div></div>`;
 function statusBadge(v) {
-  if (v.status === 'void') return '<span class="badge b-void">ملغاة</span>';
-  if (v.type === 'cash') return '<span class="badge b-cash">نقداً</span>';
-  return v.paid ? '<span class="badge b-paid">آجل — محصّل</span>' : '<span class="badge b-credit">على الحساب</span>';
+  if (v.status === 'void') return `<span class="badge b-void">${t('ملغاة')}</span>`;
+  if (v.type === 'cash') return `<span class="badge b-cash">${t('نقداً')}</span>`;
+  return v.paid ? `<span class="badge b-paid">${t('آجل — محصّل')}</span>`
+                : `<span class="badge b-credit">${t('على الحساب')}</span>`;
 }
 
 ['#invSearch', '#invFilter', '#invFrom', '#invTo'].forEach(s => $(s).addEventListener('input', renderInvoices));
@@ -768,13 +772,13 @@ $('#invBody').addEventListener('click', e => {
   else if (a === 'pay') {
     inv.paid = true; inv.paidAt = new Date().toISOString();
     Sync.mark(inv); save(); Sync.run(false);
-    renderInvoices(); toast(`تم تحصيل الفاتورة ${inv.no}`, 'ok');
+    renderInvoices(); toast(I18n.t2('تم تحصيل الفاتورة {0}', inv.no), 'ok');
   } else if (a === 'void') {
-    const reason = prompt(`سبب إلغاء الفاتورة رقم ${inv.no}؟\n(الفاتورة تبقى محفوظة في السجل كملغاة ولا تُحذف)`);
+    const reason = prompt(I18n.t2('سبب إلغاء الفاتورة رقم {0}؟\n(الفاتورة تبقى محفوظة في السجل كملغاة ولا تُحذف)', inv.no));
     if (reason === null) return;
     inv.status = 'void'; inv.voidReason = reason.trim(); inv.voidedAt = new Date().toISOString();
     Sync.mark(inv); save(); Sync.run(false);
-    renderInvoices(); toast(`تم إلغاء الفاتورة ${inv.no}`);
+    renderInvoices(); toast(I18n.t2('تم إلغاء الفاتورة {0}', inv.no));
   }
 });
 
@@ -788,7 +792,7 @@ function openInvoice(inv) {
 $('#vmPrint').addEventListener('click', () => viewing && printInvoice(viewing));
 $('#vmPdf').addEventListener('click', () => {
   if (!viewing) return;
-  toast('في نافذة الطباعة اختر الوجهة: "حفظ كـ PDF" أو "Microsoft Print to PDF"');
+  toast(t('في نافذة الطباعة اختر الوجهة: "حفظ كـ PDF" أو "Microsoft Print to PDF"'));
   setTimeout(() => printInvoice(viewing), 900);
 });
 $('#vmHtml').addEventListener('click', () => viewing && downloadInvoiceFile(viewing));
@@ -840,7 +844,7 @@ function registerHTML(list, from, to) {
 
 $('#btnPrintRegister').addEventListener('click', () => {
   const list = filteredInvoices().slice().sort((a, b) => a.no - b.no);
-  if (!list.length) return toast('لا توجد فواتير في النطاق المحدد', 'err');
+  if (!list.length) return toast(t('لا توجد فواتير في النطاق المحدد'), 'err');
   // السجل عريض (13 عموداً) فيُطبع أفقياً على A4
   printDoc(registerHTML(list, $('#invFrom').value, $('#invTo').value), REPORT_CSS,
     'size:A4 landscape;margin:8mm');
@@ -849,7 +853,7 @@ $('#btnPrintRegister').addEventListener('click', () => {
 /* ---------- تصدير CSV ---------- */
 $('#btnExportCsv').addEventListener('click', () => {
   const list = filteredInvoices().slice().sort((a, b) => a.no - b.no);
-  if (!list.length) return toast('لا توجد فواتير للتصدير', 'err');
+  if (!list.length) return toast(t('لا توجد فواتير للتصدير'), 'err');
   const q = s => `"${String(s ?? '').replace(/"/g, '""')}"`;
   const head = ['رقم الفاتورة', 'التاريخ', 'الوقت', 'العميل', 'الجوال', 'الأصناف',
     'المجموع', 'الخصم', 'التوصيل', 'الضريبة', 'الإجمالي', 'نوع الدفع', 'الحالة', 'معرّف الفاتورة', 'بصمة التحقق'];
@@ -860,7 +864,7 @@ $('#btnExportCsv').addEventListener('click', () => {
     v.status === 'void' ? 'ملغاة' : 'سارية', v.uid, v.hash].map(q).join(','));
   downloadBlob('﻿sep=,\r\n' + [head.map(q).join(','), ...rows].join('\r\n'),
     `فواتير-${todayISO()}.csv`, 'text/csv;charset=utf-8');
-  toast('تم تصدير الملف — يفتح مباشرة في Excel', 'ok');
+  toast(t('تم تصدير الملف — يفتح مباشرة في Excel'), 'ok');
 });
 
 /* ══════════════ إدارة الأصناف ══════════════ */
@@ -877,12 +881,12 @@ function renderProducts() {
       <td class="num">${p.weight || '—'}</td>
       <td>${esc(p.state) || '—'}</td>
       <td>${esc(p.origin) || '—'}</td>
-      <td>${p.active ? '<span class="badge b-cash">نعم</span>' : '<span class="badge b-void">لا</span>'}</td>
+      <td>${p.active ? `<span class="badge b-cash">${t('نعم')}</span>` : `<span class="badge b-void">${t('لا')}</span>`}</td>
       <td class="acts">
-        <button class="btn btn-sm" data-p="${p.id}" data-a="edit">تعديل</button>
-        <button class="btn btn-sm btn-danger" data-p="${p.id}" data-a="del">حذف</button>
+        <button class="btn btn-sm" data-p="${p.id}" data-a="edit">${t('تعديل')}</button>
+        <button class="btn btn-sm btn-danger" data-p="${p.id}" data-a="del">${t('حذف')}</button>
       </td>
-    </tr>`).join('') || `<tr><td colspan="9"><div class="empty">لا توجد أصناف</div></td></tr>`;
+    </tr>`).join('') || `<tr><td colspan="9"><div class="empty">${t('لا توجد أصناف')}</div></td></tr>`;
 }
 $('#pmSearch').addEventListener('input', renderProducts);
 $('#btnAddProd').addEventListener('click', () => openProdModal(null));
@@ -892,15 +896,15 @@ $('#pmBody').addEventListener('click', e => {
   const p = db.products.find(x => x.id === b.dataset.p);
   if (!p) return;
   if (b.dataset.a === 'edit') openProdModal(p);
-  else if (confirm(`حذف الصنف "${p.ar}"؟\nالفواتير القديمة لن تتأثر.`)) {
+  else if (confirm(I18n.t2('حذف الصنف "{0}"؟\nالفواتير القديمة لن تتأثر.', p.ar))) {
     db.products = db.products.filter(x => x.id !== p.id);
-    save(); renderProducts(); renderProdGrid(); toast('تم الحذف');
+    save(); renderProducts(); renderProdGrid(); toast(t('تم الحذف'));
   }
 });
 function openProdModal(p) {
   editingProd = p;
-  $('#pmTitle').textContent = p ? 'تعديل صنف' : 'إضافة صنف';
-  $('#fCat').innerHTML = CATEGORIES.map(c => `<option value="${c.key}">${c.label}</option>`).join('');
+  $('#pmTitle').textContent = t(p ? 'تعديل صنف' : 'إضافة صنف');
+  $('#fCat').innerHTML = CATEGORIES.map(c => `<option value="${c.key}">${catLabel(c.key)}</option>`).join('');
   $('#fAr').value = p?.ar || ''; $('#fEn').value = p?.en || '';
   $('#fCat').value = p?.cat || activeCat; $('#fPrice').value = p?.price ?? '';
   $('#fWeight').value = p?.weight || ''; $('#fState').value = p?.state || '';
@@ -909,7 +913,7 @@ function openProdModal(p) {
 }
 $('#btnProdSave').addEventListener('click', () => {
   const ar = $('#fAr').value.trim();
-  if (!ar) return toast('اكتب اسم الصنف بالعربي', 'err');
+  if (!ar) return toast(t('اكتب اسم الصنف بالعربي'), 'err');
   const data = {
     ar, en: $('#fEn').value.trim(), cat: $('#fCat').value,
     price: Math.max(0, +$('#fPrice').value || 0), weight: +$('#fWeight').value || 0,
@@ -918,7 +922,7 @@ $('#btnProdSave').addEventListener('click', () => {
   if (editingProd) Object.assign(editingProd, data);
   else db.products.push({ id: uid(), ...data });
   save(); closeModals(); renderProducts(); renderProdGrid();
-  toast(editingProd ? 'تم تعديل الصنف' : 'تمت إضافة الصنف', 'ok');
+  toast(t(editingProd ? 'تم تعديل الصنف' : 'تمت إضافة الصنف'), 'ok');
 });
 
 /* ══════════════ التقارير ══════════════ */
@@ -967,27 +971,31 @@ function reportData(from, to) {
   };
 }
 
-const catLabel = k => (CATEGORIES.find(c => c.key === k) || {}).label || k;
+const catLabel = k => {
+  const c = CATEGORIES.find(x => x.key === k);
+  if (!c) return k;
+  return I18n.get() === 'en' ? (c.labelEn || c.label) : c.label;
+};
 
 function renderReports() {
   const from = $('#rFrom').value, to = $('#rTo').value;
   const r = reportData(from, to);
 
   $('#rStats').innerHTML = `
-    ${stat('إجمالي المبيعات', money(r.total) + ' ر.ق', r.list.length + ' فاتورة', '')}
-    ${stat('عدد الوجبات المباعة', r.units, 'إجمالي الوحدات في الفترة', 'g')}
-    ${stat('نقداً', money(r.cash) + ' ر.ق', '', 'g')}
-    ${stat('على الحساب', money(r.credit) + ' ر.ق', 'غير محصّل: ' + money(r.unpaid) + ' ر.ق', 'w')}
-    ${stat('متوسط الفاتورة', money(r.list.length ? r.total / r.list.length : 0) + ' ر.ق',
-        'متوسط ' + (r.list.length ? (r.units / r.list.length).toFixed(1) : 0) + ' وجبة/فاتورة', 'd')}
-    ${stat('متوسط اليوم', money(r.total / r.dayCount) + ' ر.ق', r.dayCount + ' يوم عمل', 'd')}`;
+    ${stat(t('إجمالي المبيعات'), money(r.total) + ' ' + t('ر.ق'), r.list.length + ' ' + t('فاتورة'), '')}
+    ${stat(t('عدد الوجبات المباعة'), r.units, t('إجمالي الوحدات في الفترة'), 'g')}
+    ${stat(t('نقداً'), money(r.cash) + ' ' + t('ر.ق'), '', 'g')}
+    ${stat(t('على الحساب'), money(r.credit) + ' ' + t('ر.ق'), t('غير محصّل: ') + money(r.unpaid) + ' ' + t('ر.ق'), 'w')}
+    ${stat(t('متوسط الفاتورة'), money(r.list.length ? r.total / r.list.length : 0) + ' ' + t('ر.ق'),
+        t('متوسط ') + (r.list.length ? (r.units / r.list.length).toFixed(1) : 0) + t(' وجبة/فاتورة'), 'd')}
+    ${stat(t('متوسط اليوم'), money(r.total / r.dayCount) + ' ' + t('ر.ق'), r.dayCount + t(' يوم عمل'), 'd')}`;
 
   $('#catBreak').innerHTML = CATEGORIES.map(c => {
     const g = r.cats[c.key] || { qty: 0, val: 0 };
     const pct = r.itemsValue ? (g.val / r.itemsValue * 100) : 0;
-    return `<div class="stat"><div class="lbl">${c.label}</div>
-      <div class="val">${g.qty} <span style="font-size:13px;font-weight:600;color:var(--muted)">وحدة</span></div>
-      <div class="sm">${money(g.val)} ر.ق · ${pct.toFixed(1)}% من المبيعات</div>
+    return `<div class="stat"><div class="lbl">${catLabel(c.key)}</div>
+      <div class="val">${g.qty} <span style="font-size:13px;font-weight:600;color:var(--muted)">${t('وحدة')}</span></div>
+      <div class="sm">${money(g.val)} ${t('ر.ق')} · ${pct.toFixed(1)}% ${t('من المبيعات')}</div>
       <div class="pbar" style="margin-top:8px"><div style="width:${pct.toFixed(1)}%"></div></div></div>`;
   }).join('');
 
@@ -1006,13 +1014,13 @@ function renderReports() {
             <span class="muted" style="font-size:11.5px;min-width:36px">${pct.toFixed(1)}%</span></div></td>
         </tr>`;
       }).join('')
-    : `<tr><td colspan="6"><div class="empty">لا توجد بيانات في هذه الفترة</div></td></tr>`;
+    : `<tr><td colspan="6"><div class="empty">${t('لا توجد بيانات في هذه الفترة')}</div></td></tr>`;
 
   const dayRows = Object.entries(r.days).sort((a, b) => b[0].localeCompare(a[0]));
   $('#dailyRows').innerHTML = dayRows.length
     ? dayRows.map(([d, v]) => `<tr><td class="num">${fmtDate(d)}</td><td class="num">${v.n}</td>
         <td class="num">${money(v.cash)}</td><td class="num">${money(v.credit)}</td><td class="num"><b>${money(v.total)}</b></td></tr>`).join('')
-    : `<tr><td colspan="5"><div class="empty">لا توجد بيانات</div></td></tr>`;
+    : `<tr><td colspan="5"><div class="empty">${t('لا توجد بيانات')}</div></td></tr>`;
 }
 
 /** تقرير مبيعات قابل للطباعة — الكميات المباعة والأصناف والأقسام والأيام */
@@ -1073,7 +1081,7 @@ $('#btnPrintReport').addEventListener('click', () => {
 
 $('#btnReportCsv').addEventListener('click', () => {
   const r = reportData($('#rFrom').value, $('#rTo').value);
-  if (!r.items.length) return toast('لا توجد مبيعات في هذه الفترة', 'err');
+  if (!r.items.length) return toast(t('لا توجد مبيعات في هذه الفترة'), 'err');
   const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const rows = r.items.map(([n, e], i) => [i + 1, n, catLabel(e.cat), e.qty, money(e.val),
     (r.itemsValue ? e.val / r.itemsValue * 100 : 0).toFixed(1) + '%'].map(q).join(','));
@@ -1082,7 +1090,7 @@ $('#btnReportCsv').addEventListener('click', () => {
      ['', 'الإجمالي', '', r.units, money(r.itemsValue), '100%'].map(q).join(',')].join('\r\n'),
     `تقرير-الأصناف-${$('#rFrom').value || 'الكل'}_${$('#rTo').value || todayISO()}.csv`,
     'text/csv;charset=utf-8');
-  toast('تم تصدير تقرير الأصناف', 'ok');
+  toast(t('تم تصدير تقرير الأصناف'), 'ok');
 });
 
 /* ══════════════ الإعدادات والنسخ الاحتياطي ══════════════ */
@@ -1104,16 +1112,17 @@ function fillSettings() {
   $('#sSyncUrl').value = sc.url || '';
   $('#sSyncKey').value = sc.key || '';
   $('#sSyncOn').checked = !!sc.enabled;
+  const loc = I18n.get() === 'en' ? 'en-GB' : 'ar-QA';
   $('#syncNote').innerHTML = sc.lastError
-    ? `<b>آخر خطأ:</b> ${esc(sc.lastError)}`
+    ? `<b>${t('آخر خطأ:')}</b> ${esc(sc.lastError)}`
     : (sc.lastOk
-        ? `آخر مزامنة ناجحة: <b>${new Date(sc.lastOk).toLocaleString('ar-QA')}</b>`
-        : 'لم تتم أي مزامنة بعد.');
+        ? `${t('آخر مزامنة ناجحة: ')}<b>${new Date(sc.lastOk).toLocaleString(loc)}</b>`
+        : t('لم تتم أي مزامنة بعد.'));
   $('#syncInfo').textContent = Sync.configured()
-    ? `في انتظار الرفع: ${Sync.pending().length}` : 'غير مفعّلة';
+    ? t('في انتظار الرفع: ') + Sync.pending().length : t('غير مفعّلة');
   $('#backupNote').innerHTML = db.lastBackup
-    ? `آخر نسخة احتياطية: <b>${fmtDate(db.lastBackup.slice(0, 10))}</b> — عدد الفواتير المحفوظة: <b>${db.invoices.length}</b>`
-    : `لم تأخذ نسخة احتياطية بعد. عدد الفواتير المحفوظة: <b>${db.invoices.length}</b>`;
+    ? `${t('آخر نسخة احتياطية: ')}<b>${fmtDate(db.lastBackup.slice(0, 10))}</b>${t(' — عدد الفواتير المحفوظة: ')}<b>${db.invoices.length}</b>`
+    : `${t('لم تأخذ نسخة احتياطية بعد. عدد الفواتير المحفوظة: ')}<b>${db.invoices.length}</b>`;
 }
 $('#btnSaveSettings').addEventListener('click', () => {
   const s = db.settings;
@@ -1125,7 +1134,7 @@ $('#btnSaveSettings').addEventListener('click', () => {
   s.vatRate = Math.max(0, +$('#sVatRate').value || 0);
   saveSyncSettings();
   applyBranding(); clearCart(); Sync.run(false);
-  toast('تم حفظ الإعدادات', 'ok');
+  toast(t('تم حفظ الإعدادات'), 'ok');
 });
 
 /* ---------- شعار المطبخ ---------- */
@@ -1149,9 +1158,9 @@ $('#logoFile').addEventListener('change', e => {
       cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
       db.settings.logo = cv.toDataURL('image/png');
       save(); renderLogoPreview();
-      toast('تم حفظ الشعار — سيظهر على الفواتير الجديدة والمطبوعة', 'ok');
+      toast(t('تم حفظ الشعار — سيظهر على الفواتير الجديدة والمطبوعة'), 'ok');
     };
-    img.onerror = () => toast('تعذّرت قراءة الصورة', 'err');
+    img.onerror = () => toast(t('تعذّرت قراءة الصورة'), 'err');
     img.src = rd.result;
   };
   rd.readAsDataURL(f);
@@ -1159,7 +1168,7 @@ $('#logoFile').addEventListener('change', e => {
 });
 $('#btnLogoClear').addEventListener('click', () => {
   db.settings.logo = ''; save(); renderLogoPreview();
-  toast('رجع الشعار الافتراضي');
+  toast(t('رجع الشعار الافتراضي'));
 });
 
 /* ---------- المزامنة السحابية ---------- */
@@ -1177,34 +1186,34 @@ function saveSyncSettings() {
 
 $('#btnSyncSave').addEventListener('click', async () => {
   const url = $('#sSyncUrl').value.trim(), key = $('#sSyncKey').value.trim();
-  if (!url || !key) return toast('اكتب رابط النشرة والمفتاح أولاً', 'err');
+  if (!url || !key) return toast(t('اكتب رابط النشرة والمفتاح أولاً'), 'err');
 
   $('#sSyncOn').checked = true;          // الحفظ من هنا يعني التفعيل
   saveSyncSettings();
   try {
     await Sync.test();                   // نتأكد أن البيانات صحيحة قبل الاعتماد عليها
-    toast('تم تفعيل المزامنة — الفواتير هترفع تلقائياً', 'ok');
+    toast(t('تم تفعيل المزامنة — الفواتير هترفع تلقائياً'), 'ok');
     await Sync.run(false);
   } catch (e) {
-    toast('حُفظت البيانات لكن الاتصال فشل: ' + e.message, 'err');
+    toast(t('حُفظت البيانات لكن الاتصال فشل: ') + e.message, 'err');
   }
   fillSettings();
 });
 
 $('#btnSyncNow').addEventListener('click', () => {
-  if (!Sync.configured()) return toast('احفظ رابط النشرة والمفتاح وفعّل المزامنة أولاً', 'err');
+  if (!Sync.configured()) return toast(t('احفظ رابط النشرة والمفتاح وفعّل المزامنة أولاً'), 'err');
   Sync.run(true).then(fillSettings);
 });
 $('#btnSyncTest').addEventListener('click', async () => {
   const url = $('#sSyncUrl').value.trim(), key = $('#sSyncKey').value.trim();
-  if (!url || !key) return toast('اكتب رابط النشرة والمفتاح', 'err');
+  if (!url || !key) return toast(t('اكتب رابط النشرة والمفتاح'), 'err');
   const prev = db.settings.sync;
   db.settings.sync = { ...prev, url, key, enabled: true };   // اختبار مؤقت بالقيم المكتوبة
   try {
     const n = await Sync.test();
     toast(`الاتصال سليم — يوجد ${n} فاتورة على السحابة`, 'ok');
   } catch (e) {
-    toast('فشل الاتصال: ' + e.message, 'err');
+    toast(t('فشل الاتصال: ') + e.message, 'err');
   } finally {
     db.settings.sync = prev;
   }
@@ -1213,7 +1222,7 @@ $('#btnSyncTest').addEventListener('click', async () => {
 $('#btnBackup').addEventListener('click', () => {
   db.lastBackup = new Date().toISOString(); save();
   downloadBlob(JSON.stringify(db, null, 2), `نسخة-احتياطية-${todayISO()}.json`, 'application/json');
-  fillSettings(); toast('تم تنزيل النسخة الاحتياطية', 'ok');
+  fillSettings(); toast(t('تم تنزيل النسخة الاحتياطية'), 'ok');
 });
 $('#btnRestore').addEventListener('click', () => $('#restoreFile').click());
 $('#restoreFile').addEventListener('change', e => {
@@ -1223,21 +1232,21 @@ $('#restoreFile').addEventListener('change', e => {
   rd.onload = () => {
     try {
       const d = JSON.parse(rd.result);
-      if (!d.settings || !Array.isArray(d.products)) throw new Error('ملف غير صالح');
+      if (!d.settings || !Array.isArray(d.products)) throw new Error(t('ملف غير صالح'));
       if (!confirm(`استعادة ${d.invoices?.length || 0} فاتورة و${d.products.length} صنف؟\nسيتم استبدال البيانات الحالية.`)) return;
       db = d;
       normalize();
       save();
       applyBranding(); clearCart(); renderCatTabs(); renderProdGrid(); fillSettings();
-      toast('تمت الاستعادة بنجاح', 'ok');
-    } catch (err) { toast('تعذّر قراءة الملف: ' + err.message, 'err'); }
+      toast(t('تمت الاستعادة بنجاح'), 'ok');
+    } catch (err) { toast(t('تعذّر قراءة الملف: ') + err.message, 'err'); }
     e.target.value = '';
   };
   rd.readAsText(f);
 });
 $('#btnWipe').addEventListener('click', () => {
-  if (!confirm('سيتم مسح كل الفواتير والأصناف والإعدادات نهائياً.\nهل أخذت نسخة احتياطية؟')) return;
-  if (!confirm('تأكيد أخير: مسح كل البيانات؟')) return;
+  if (!confirm(t('سيتم مسح كل الفواتير والأصناف والإعدادات نهائياً.\nهل أخذت نسخة احتياطية؟'))) return;
+  if (!confirm(t('تأكيد أخير: مسح كل البيانات؟'))) return;
   localStorage.removeItem(STORE_KEY);
   if (idb) { idb.close(); indexedDB.deleteDatabase(IDB_NAME); }
   setTimeout(() => location.reload(), 250);
@@ -1261,19 +1270,46 @@ function measureAppbar() {
   }
 }
 
+/** يعيد رسم كل ما هو مبنيّ ديناميكياً بعد تبديل اللغة */
+function rerenderAll() {
+  const active = $('#nav button.active');
+  if (active) {
+    const copy = pageCopy[active.dataset.page];
+    if (copy) { $('#pageTitle').textContent = t(copy[0]); $('#pageDescription').textContent = t(copy[1]); }
+  }
+  renderCatTabs(); renderProdGrid(); renderCart();
+  $('#nextNoLabel').textContent = t('رقم الفاتورة القادم: ') + db.settings.nextInvoiceNo;
+  renderInvoices(); renderProducts(); renderReports(); fillSettings();
+  Sync.render();
+  I18n.applyStatic();   // أي نص موسوم داخل قوالب مرسومة حديثاً
+  applyBranding(); tick();
+  measureAppbar();
+}
+
+$('#btnLang').addEventListener('click', () => {
+  const next = I18n.get() === 'ar' ? 'en' : 'ar';
+  db.settings.lang = next;
+  save();
+  I18n.set(next, rerenderAll);
+});
+
 function applyBranding() {
-  $('#hdrNameAr').textContent = db.settings.nameAr;
-  $('#hdrNameEn').textContent = db.settings.nameEn;
-  document.title = db.settings.nameAr + ' — نظام نقاط البيع';
+  const en = I18n.get() === 'en';
+  $('#hdrNameAr').textContent = en ? db.settings.nameEn : db.settings.nameAr;
+  $('#hdrNameEn').textContent = en ? db.settings.nameAr : db.settings.nameEn;
+  document.title = (en ? db.settings.nameEn + ' — Point of Sale'
+                       : db.settings.nameAr + ' — نظام نقاط البيع');
 }
 function tick() {
   const d = new Date();
-  $('#clock').textContent = d.toLocaleDateString('ar-QA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const loc = I18n.get() === 'en' ? 'en-GB' : 'ar-QA';
+  $('#clock').textContent = d.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
     + ' · ' + d.toTimeString().slice(0, 5);
 }
 
 (async function start() {
   await load();
+  I18n.set(db.settings.lang || 'ar');
   applyBranding();
   renderCatTabs();
   renderProdGrid();

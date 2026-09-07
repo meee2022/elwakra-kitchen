@@ -1,0 +1,277 @@
+<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>معاينة تصميم الفاتورة</title><style>body{margin:0;padding:24px;background:#eee9e4} .preview-tools{font:14px Tahoma;text-align:center;margin:0 auto 20px}.preview-tools button{padding:10px 16px;cursor:pointer;margin:4px}#preview{max-width:148mm;margin:auto;box-shadow:0 4px 24px #0001}@media print{body{padding:0;background:white}.preview-tools{display:none}#preview{box-shadow:none}@page{size:A5;margin:7mm}}</style><div class="preview-tools">نسخة معاينة فقط، لا تُحفظ في سجل الفواتير<br><button onclick="show('a5')">A5</button><button onclick="show('thermal')">رول حراري</button></div><div id="preview"></div><script src="data.js"></script><script src="qr.js"></script><script>const db={settings:{...DEFAULT_SETTINGS}};
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = n => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
+/** يعزل الأرقام الرسمية عن اتجاه النص العربي حتى لا تنعكس عند العرض/الطباعة */
+const ltr = s => `<bdi dir="ltr">${esc(s)}</bdi>`;
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+/** تقسيم المبلغ إلى ريال ودرهم (كما في الفاتورة الورقية) */
+function split(v) {
+  const cents = Math.round(Number(v || 0) * 100);
+  return { r: Math.floor(cents / 100), d: cents % 100 };
+}
+
+const todayISO = () => new Date().toLocaleDateString('en-CA');
+function fmtDate(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function toast(msg, kind = '') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.textContent = msg;
+  $('#toast').appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+/** بصمة تحقق للفاتورة — تتغيّر لو عُدّل أي رقم فيها (FNV-1a) */
+function fingerprint(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(36).toUpperCase().padStart(7, '0').slice(0, 7);
+}
+
+/* ══════════════ تفقيط المبلغ بالحروف ══════════════ */
+const _ONES = ['', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة', 'عشرة',
+  'أحد عشر', 'اثنا عشر', 'ثلاثة عشر', 'أربعة عشر', 'خمسة عشر', 'ستة عشر', 'سبعة عشر', 'ثمانية عشر', 'تسعة عشر'];
+const _TENS = ['', '', 'عشرون', 'ثلاثون', 'أربعون', 'خمسون', 'ستون', 'سبعون', 'ثمانون', 'تسعون'];
+const _HUND = ['', 'مائة', 'مائتان', 'ثلاثمائة', 'أربعمائة', 'خمسمائة', 'ستمائة', 'سبعمائة', 'ثمانمائة', 'تسعمائة'];
+
+function _below1000(n) {
+  const parts = [], h = Math.floor(n / 100), r = n % 100;
+  if (h) parts.push(_HUND[h]);
+  if (r < 20) { if (r) parts.push(_ONES[r]); }
+  else { const u = r % 10, t = Math.floor(r / 10); if (u) parts.push(_ONES[u]); parts.push(_TENS[t]); }
+  return parts.join(' و');
+}
+function _group(n, one, two, few, many) {
+  if (n === 1) return one;
+  if (n === 2) return two;
+  if (n <= 10) return _below1000(n) + ' ' + few;
+  return _below1000(n) + ' ' + many;
+}
+function numToWords(n) {
+  n = Math.floor(n);
+  if (n === 0) return 'صفر';
+  const parts = [];
+  const mil = Math.floor(n / 1000000); n %= 1000000;
+  const th = Math.floor(n / 1000); n %= 1000;
+  if (mil) parts.push(_group(mil, 'مليون', 'مليونان', 'ملايين', 'مليوناً'));
+  if (th) parts.push(_group(th, 'ألف', 'ألفان', 'آلاف', 'ألفاً'));
+  if (n) parts.push(_below1000(n));
+  return parts.join(' و');
+}
+function tafqeet(total) {
+  const { r, d } = split(total);
+  if (!r && !d) return 'فقط صفر ريال قطري لا غير';
+  if (!r) return 'فقط ' + numToWords(d) + ' درهماً لا غير';
+  let s = 'فقط ' + numToWords(r) + ' ريال قطري';
+  if (d) s += ' و' + numToWords(d) + ' درهماً';
+  return s + ' لا غير';
+}
+
+
+const qrFor=()=>QR.toDataURL("STDK | DESIGN PREVIEW | 230.00 QAR",{scale:3,quiet:4});
+const LOGO_SVG = `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="STDK">
+  <circle cx="60" cy="60" r="58" fill="#2E2521"/>
+  <circle cx="60" cy="60" r="51" fill="none" stroke="#B9A79D" stroke-width="1.6"/>
+  <text x="60" y="72" text-anchor="middle" font-family="Segoe UI,Arial,sans-serif"
+        font-size="34" font-weight="400" letter-spacing="2" fill="#FFFFFF">STDK</text>
+</svg>`;
+const logoMarkup = () => db.settings.logo
+  ? `<img src="${db.settings.logo}" alt="">`
+  : LOGO_SVG;
+
+function invoiceHTML(inv, opts = {}) {
+  const o = inv.org || db.settings;
+  const thermal = (opts.size || db.settings.printSize) === 'thermal';
+  const qrImg = qrFor(inv, thermal ? 2 : 3);
+
+  const rows = inv.items.map((it, i) => {
+    return `<tr>
+      <td class="c">${i + 1}</td>
+      <td class="d">${esc(it.ar)}${it.en ? `<span class="en">${esc(it.en)}</span>` : ''}</td>
+      <td class="c">${it.qty}</td>
+      <td class="c">${money(it.price)}</td>
+      <td class="c amount">${money(it.qty * it.price)}</td>
+    </tr>`;
+  }).join('');
+
+  const sumRow = (label, val, cls = 'sum') =>
+    `<tr class="${cls}"><td colspan="4" class="lbl">${label}</td><td class="c">${money(val)}</td></tr>`;
+  const extras = [
+    inv.discount > 0 ? sumRow('الخصم (Discount)', -inv.discount) : '',
+    inv.delivery > 0 ? sumRow('التوصيل (Delivery)', inv.delivery) : '',
+    inv.vat > 0 ? sumRow(`ضريبة القيمة المضافة ${inv.vatRate}% (VAT)`, inv.vat) : ''
+  ].join('');
+
+  const qty = inv.items.reduce((n, it) => n + it.qty, 0);
+
+  return `
+<div class="inv-wrap">
+  ${inv.status === 'void' ? '<div class="inv-void">ملغاة / VOID</div>' : ''}
+  <div class="inv ${thermal ? 'thermal' : ''}">
+
+    <div class="inv-top">
+      <div class="inv-logo">${logoMarkup()}</div>
+      <div class="inv-title">
+        <div class="ar">${esc(o.nameAr)}</div>
+        <div class="en">${esc(o.nameEn)}</div>
+      </div>
+      <div class="inv-badge">
+        <div class="lab">فاتورة / INVOICE</div>
+        <div class="no">${inv.no}</div>
+      </div>
+    </div>
+
+    <div class="inv-strip">
+      <div><i>النوع</i>فاتورة ${inv.type === 'cash' ? 'نقداً' : 'على الحساب'} — إلكترونية</div>
+      <div><i>التاريخ</i>${ltr(fmtDate(inv.date))}</div>
+      <div><i>الوقت</i>${ltr(inv.time)}</div>
+    </div>
+
+    <div class="inv-strip">
+      <div><i>السجل التجاري</i>${ltr(o.crNumber)}</div>
+      <div><i>رقم قيد المنشأة</i>${ltr(o.entityNumber)}</div>
+      <div><i>التسجيل الضريبي</i>${ltr(o.taxNumber)}</div>
+    </div>
+
+    <div class="inv-cust">
+      <span><b>العميل / الجهة · BILL TO</b> ${esc(inv.customer) || (inv.type === 'cash' ? 'عميل نقدي' : 'غير محدد')}</span>
+      ${inv.phone ? `<span><b>الجوال</b> ${ltr(inv.phone)}</span>` : ''}
+      ${inv.note ? `<span><b>ملاحظات</b> ${esc(inv.note)}</span>` : ''}
+    </div>
+
+    <table class="inv-t">
+      <thead>
+        <tr>
+          <th style="width:6%">م</th>
+          <th>الصنف<small>ITEM DESCRIPTION</small></th>
+          <th style="width:10%">الكمية<small>QTY</small></th>
+          <th style="width:18%">سعر الوحدة<small>QAR</small></th>
+          <th style="width:20%">المبلغ<small>QAR</small></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+        ${sumRow(`المجموع (Subtotal) — عدد الوحدات: ${qty}`, inv.subtotal)}
+        ${extras}
+        ${sumRow('الإجمالي المستحق · ر.ق / TOTAL QAR', inv.total, 'total')}
+      </tbody>
+    </table>
+
+    ${db.settings.showTafqeet ? `<div class="inv-tafqeet">${tafqeet(inv.total)}</div>` : ''}
+
+    <div class="inv-bottom">
+      <div class="inv-verify">
+        ${qrImg ? `<img src="${qrImg}" alt="">` : ''}
+        <div class="vt">
+          <div><b>التحقق من الفاتورة</b></div>
+          <div>معرّف الفاتورة: <code>${ltr(inv.uid)}</code></div>
+          <div>بصمة التحقق: <code>${ltr(inv.hash)}</code></div>
+        </div>
+      </div>
+      <div class="inv-signs">
+        <div>المحاسب — Accountant</div>
+        <div>توقيع المستلم — Receiver's Signature</div>
+      </div>
+    </div>
+
+    <div class="inv-foot">
+      <div><b>تليفون (Tel):</b> ${ltr(o.tel)} &nbsp;·&nbsp; <b>جوال (Mob):</b> ${ltr(o.mobile)}
+        &nbsp;·&nbsp; <b>ص.ب (P.O.Box):</b> ${ltr(o.poBox)} — ${esc(o.city)} / ${esc(o.cityEn)}</div>
+      <div class="l2">شكرًا لاختياركم مطابخ الجنوب <span lang="en" dir="ltr">Thank you for your order</span></div>
+    </div>
+  </div>
+</div>`;
+}
+
+const PRINT_FONT = `@import url('fonts/cairo.css');`;
+
+const INVOICE_CSS = PRINT_FONT + `
+.inv-wrap{position:relative;max-width:100%}
+.inv,.inv *{box-sizing:border-box}
+.inv{width:100%;max-width:148mm;padding:7mm;background:#fff;color:#25201d;margin:0 auto;
+  font-family:'Cairo',"Segoe UI",Tahoma,Arial,sans-serif;font-size:9pt;line-height:1.6;direction:rtl}
+.inv-top{display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:2px solid #913f2c;break-inside:avoid}
+.inv-logo{width:15mm;height:15mm;flex:none}
+.inv-logo svg,.inv-logo img{display:block;width:100%;height:100%;object-fit:contain}
+.inv-title{flex:1;min-width:0;text-align:right}
+.inv-title .ar{font-size:13pt;font-weight:800;line-height:1.65;overflow-wrap:anywhere}
+.inv-title .en{font-size:7pt;font-weight:500;color:#655d58;line-height:1.6;direction:ltr;text-align:right}
+.inv-badge{flex:none;text-align:left;max-width:27mm;overflow-wrap:anywhere}
+.inv-badge .lab{font-size:6.5pt;font-weight:600;color:#655d58}
+.inv-badge .no{font-size:20pt;line-height:1.4;font-weight:800;color:#913f2c;direction:ltr;font-variant-numeric:tabular-nums}
+.inv-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px;break-inside:avoid}
+.inv-strip div{font-size:8pt;min-width:0;overflow-wrap:anywhere}
+.inv-strip i{display:block;font-size:6.5pt;font-weight:600;font-style:normal;color:#776c64;margin-bottom:2px}
+.inv-strip+.inv-strip{margin-top:8px;padding-top:8px;border-top:1px solid #e3dcd6}
+.inv-cust{display:flex;flex-wrap:wrap;gap:8px 22px;padding:7px 10px;margin:9px 0;background:#f7f4f1;border:1px solid #e8e1dc;border-radius:4px;font-size:9pt;break-inside:avoid}
+.inv-cust span{min-width:0;overflow-wrap:anywhere}
+.inv-cust b{display:block;font-size:6.5pt;font-weight:600;color:#776c64;margin-bottom:3px}
+table.inv-t{width:100%;border-collapse:collapse;table-layout:fixed;margin:0;border:0}
+table.inv-t th,table.inv-t td{position:static;box-shadow:none;border-radius:0;border:0;border-bottom:1px solid #e6e0db;padding:5px 5px;font-size:9pt;vertical-align:middle}
+table.inv-t th{background:#f0eae5;color:#514139;font-size:7pt;font-weight:700;text-align:center;white-space:normal;line-height:1.5}
+table.inv-t th small{display:block;font-size:6pt;font-weight:500;color:#74675e}
+table.inv-t td.d{text-align:right;line-height:1.65;font-weight:600;overflow-wrap:anywhere}
+table.inv-t td.c{text-align:center;direction:ltr;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+table.inv-t td.amount{font-weight:700}
+table.inv-t td .en{display:block;float:none;font-size:6.8pt;font-weight:400;color:#776c64;direction:ltr;text-align:right;line-height:1.5;margin-top:2px}
+table.inv-t tbody tr td{background:#fff}
+table.inv-t tr.sum td{background:#fff;font-size:8pt;padding-top:6px;padding-bottom:6px}
+table.inv-t td.lbl{text-align:right;font-weight:600}
+table.inv-t tr.total td{background:#eee4dd;color:#713520;border-top:1px solid #cfb9aa;border-bottom:1px solid #cfb9aa;font-size:10pt;font-weight:800;padding:10px 5px}
+table.inv-t thead{display:table-header-group}
+table.inv-t tr{break-inside:avoid;page-break-inside:avoid}
+.inv-tafqeet{font-size:8pt;color:#514139;padding:7px 0;margin-top:3px;text-align:right;break-inside:avoid}
+.inv-bottom{display:flex;align-items:flex-end;gap:18px;margin-top:10px;break-inside:avoid;min-width:0}
+.inv-verify{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.inv-verify img{width:18mm;height:18mm;flex:none;display:block}
+.inv-verify .vt{min-width:0;font-size:6pt;color:#655d58;line-height:1.9}
+.inv-verify .vt b{color:#25201d;font-size:7pt}
+.inv-verify code{font-family:Consolas,monospace;font-size:6pt;overflow-wrap:anywhere}
+.inv-signs{flex:1;display:flex;gap:12px;min-width:0}
+.inv-signs div{flex:1;min-width:0;border-top:1px solid #aaa098;padding-top:5px;text-align:center;font-size:6.5pt;color:#655d58;line-height:1.7}
+.inv-foot{border-top:1px solid #d8cbc1;margin-top:10px;padding-top:6px;text-align:center;font-size:6.8pt;line-height:1.9;color:#655d58;break-inside:avoid;overflow-wrap:anywhere}
+.inv-foot b{font-weight:600}
+.inv-foot .l2{font-size:7pt;margin-top:7px;color:#713520;font-weight:600}
+.inv-foot .l2 span{display:block;font-size:6pt;font-weight:400;color:#776c64}
+.inv-void{position:absolute;inset:0;display:grid;place-items:center;font-size:46pt;color:rgba(190,0,0,.15);font-weight:800;transform:rotate(-18deg);pointer-events:none;z-index:2}
+.inv.thermal{max-width:72mm;padding:2mm;font-size:8pt;color:#111}
+.inv.thermal .inv-top{flex-wrap:wrap;gap:6px;padding-bottom:8px}
+.inv.thermal .inv-logo{width:12mm;height:12mm}
+.inv.thermal .inv-title .ar{font-size:10pt}
+.inv.thermal .inv-title .en{font-size:6pt}
+.inv.thermal .inv-badge{max-width:none;flex-basis:100%;display:flex;align-items:center;justify-content:space-between}
+.inv.thermal .inv-badge .no{font-size:13pt}
+.inv.thermal .inv-strip{gap:6px;margin-top:7px}
+.inv.thermal .inv-strip div{font-size:6.5pt}
+.inv.thermal .inv-strip i{font-size:5.5pt}
+.inv.thermal .inv-cust{font-size:8pt;padding:5px;margin:8px 0;gap:5px}
+.inv.thermal table.inv-t th,.inv.thermal table.inv-t td{font-size:7pt;padding:5px 2px}
+.inv.thermal table.inv-t th small,.inv.thermal table.inv-t td .en{font-size:5.5pt}
+.inv.thermal table.inv-t tr.total td{font-size:8pt}
+.inv.thermal .inv-tafqeet{font-size:7pt}
+.inv.thermal .inv-signs{display:none}
+.inv.thermal .inv-bottom{margin-top:8px}
+.inv.thermal .inv-verify img{width:18mm;height:18mm}
+.inv.thermal .inv-foot{font-size:6pt}
+@media screen and (max-width:480px){
+  .inv:not(.thermal){padding:12px}
+  .inv:not(.thermal) .inv-top{flex-wrap:wrap;gap:8px}
+  .inv:not(.thermal) .inv-title .ar{font-size:11pt}
+  .inv:not(.thermal) .inv-badge{max-width:none;flex-basis:100%;display:flex;align-items:center;justify-content:space-between}
+  .inv:not(.thermal) .inv-strip{gap:6px}
+  .inv:not(.thermal) table.inv-t th,.inv:not(.thermal) table.inv-t td{font-size:8pt;padding:6px 3px}
+  .inv:not(.thermal) .inv-bottom{flex-wrap:wrap}
+  .inv:not(.thermal) .inv-signs{flex-basis:100%;margin-top:20px}
+}
+@media print{.inv{max-width:none;padding:0}.inv.thermal{max-width:72mm;padding:0}}
+`;
+
+const inv={no:95100,date:'2026-09-07',time:'23:18',type:'cash',customer:'اسم الوزارة / الجهة',phone:'',note:'',status:'active',uid:'STDK-PREVIEW-95100',hash:'PREVIEW',org:{...DEFAULT_SETTINGS},subtotal:230,discount:0,delivery:0,vat:0,total:230,items:[{ar:'مكبوس سمك',en:'Magbus Samak',qty:1,price:40},{ar:'صالونة سمك مع رز',en:'Salona Samak + Rice',qty:1,price:40},{ar:'صالونة ربيان + عيش أبيض',en:'Salona Robiyan + Aish Abiad',qty:2,price:50},{ar:'برياني ربيان',en:'Robiyan Biryani',qty:1,price:50}]};
+document.head.insertAdjacentHTML('beforeend','<style>'+INVOICE_CSS+'</style>');
+function show(size){document.querySelector('#preview').innerHTML=invoiceHTML(inv,{size});}show('a5');
+</script></html>

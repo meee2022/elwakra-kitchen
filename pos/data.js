@@ -89,7 +89,7 @@ const DEFAULT_PRODUCTS = [
 ];
 
 const CATEGORIES = [
-  { key: 'meals',   label: 'وجبات' },
-  { key: 'banquet', label: 'ولائم' },
-  { key: 'extra',   label: 'إضافات' }
+  { key: 'meals',   label: 'وجبات',  labelEn: 'Meals' },
+  { key: 'banquet', label: 'ولائم',  labelEn: 'Banquets' },
+  { key: 'extra',   label: 'إضافات', labelEn: 'Extras' }
 ];
