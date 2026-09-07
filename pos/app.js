@@ -1109,13 +1109,8 @@ $('#btnSaveSettings').addEventListener('click', () => {
   s.showTafqeet = $('#sTafqeet').value === '1';
   s.vatEnabled = $('#sVat').value === '1';
   s.vatRate = Math.max(0, +$('#sVatRate').value || 0);
-  s.sync = {
-    ...(s.sync || {}),
-    url: $('#sSyncUrl').value.trim(),
-    key: $('#sSyncKey').value.trim(),
-    enabled: $('#sSyncOn').checked
-  };
-  save(); applyBranding(); clearCart(); Sync.render(); Sync.run(false);
+  saveSyncSettings();
+  applyBranding(); clearCart(); Sync.run(false);
   toast('تم حفظ الإعدادات', 'ok');
 });
 
@@ -1154,6 +1149,34 @@ $('#btnLogoClear').addEventListener('click', () => {
 });
 
 /* ---------- المزامنة السحابية ---------- */
+/** يقرأ حقول المزامنة من الشاشة ويحفظها — يُستدعى من زر البطاقة ومن حفظ الإعدادات */
+function saveSyncSettings() {
+  db.settings.sync = {
+    ...(db.settings.sync || {}),
+    url: $('#sSyncUrl').value.trim().replace(/\/+$/, ''),
+    key: $('#sSyncKey').value.trim(),
+    enabled: $('#sSyncOn').checked
+  };
+  save();
+  Sync.render();
+}
+
+$('#btnSyncSave').addEventListener('click', async () => {
+  const url = $('#sSyncUrl').value.trim(), key = $('#sSyncKey').value.trim();
+  if (!url || !key) return toast('اكتب رابط النشرة والمفتاح أولاً', 'err');
+
+  $('#sSyncOn').checked = true;          // الحفظ من هنا يعني التفعيل
+  saveSyncSettings();
+  try {
+    await Sync.test();                   // نتأكد أن البيانات صحيحة قبل الاعتماد عليها
+    toast('تم تفعيل المزامنة — الفواتير هترفع تلقائياً', 'ok');
+    await Sync.run(false);
+  } catch (e) {
+    toast('حُفظت البيانات لكن الاتصال فشل: ' + e.message, 'err');
+  }
+  fillSettings();
+});
+
 $('#btnSyncNow').addEventListener('click', () => {
   if (!Sync.configured()) return toast('احفظ رابط النشرة والمفتاح وفعّل المزامنة أولاً', 'err');
   Sync.run(true).then(fillSettings);
