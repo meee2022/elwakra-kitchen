@@ -173,6 +173,38 @@ const I18N = {
   'تم تصدير تقرير الأصناف': 'Items report exported',
   'الكل': 'all',
 
+  /* ── الحماية برمز دخول ── */
+  'الحماية برمز دخول': 'Passcode Protection',
+  'أدخل رمز الدخول للمتابعة': 'Enter your passcode to continue',
+  'رمز الدخول': 'Passcode',
+  'دخول': 'Unlock',
+  'الرمز': 'Passcode',
+  'تأكيد': 'Confirm',
+  'قفل الشاشة': 'Lock the screen',
+  'رمز الدخول للموقع': 'Site Passcode',
+  'رمز شاشة الإعدادات': 'Settings Passcode',
+  'تعيين': 'Set',
+  'تغيير': 'Change',
+  'إزالة': 'Remove',
+  'مفعّل': 'On',
+  'غير مفعّل': 'Off',
+  'رمز الدخول الجديد': 'New site passcode',
+  'رمز الإعدادات الجديد': 'New settings passcode',
+  'أعد إدخال الرمز للتأكيد': 'Re-enter the passcode to confirm',
+  'أدخل رمز الإعدادات': 'Enter the settings passcode',
+  'أدخل الرمز الحالي للتأكيد': 'Enter the current passcode to confirm',
+  'رمز غير صحيح': 'Wrong passcode',
+  'جاري التحقق…': 'Checking…',
+  'الرمز لا يقل عن 4 خانات': 'The passcode must be at least 4 characters',
+  'الرمزان غير متطابقين': 'The two entries do not match',
+  'تم حفظ الرمز': 'Passcode saved',
+  'تم إلغاء رمز الدخول': 'Site passcode removed',
+  'تم إلغاء رمز الإعدادات': 'Settings passcode removed',
+  'رمز الدخول يُطلب عند فتح الموقع، ورمز الإعدادات يُطلب عند دخول هذه الشاشة. الرمز نفسه لا يُحفظ — تُحفظ بصمته فقط.':
+    'The site passcode is asked for when the site opens; the settings passcode when entering this screen. The passcode itself is never stored — only its hash.',
+  'لو نسيت الرمز: استعد نسخة احتياطية — ملف النسخة لا يحتوي الرموز، فيفتح النظام بلا قفل. النظام يعمل داخل المتصفح، فالقفل يمنع التصفّح العابر ولا يحمي من شخص تقني يملك الجهاز.':
+    'If you forget the passcode: restore a backup — the backup file holds no passcodes, so the system opens unlocked. The system runs inside the browser, so the lock stops casual browsing; it does not protect against a technical person who has the device.',
+
   /* ── الإعدادات ── */
   'بيانات المنشأة (تظهر على كل فاتورة إلكترونية)': 'Business Details (shown on every invoice)',
   'الاسم التجاري بالعربي': 'Trade Name (Arabic)',

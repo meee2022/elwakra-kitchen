@@ -647,3 +647,111 @@ input,select,textarea{min-width:0;max-width:100%}
   html{scroll-padding-top:calc(var(--appbar-h,140px) + 80px)}
 }
 @media(max-height:650px){html{scroll-padding-top:80px}}
+
+
+/* ============================================================
+   تصغير بطاقات الأصناف
+   كانت قاعدة repeat(4,…) تثبّت أربعة أعمدة على الشاشات العريضة
+   فتتمدّد البطاقة كلما اتّسعت الشاشة. الآن العدد يتبع العرض المتاح.
+   ============================================================ */
+.prod-grid{
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,148px),1fr));
+  gap:9px;
+}
+@media(min-width:1450px){
+  .prod-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,158px),1fr))}
+}
+.prod{min-height:118px; padding:11px 12px; gap:8px; border-radius:11px}
+.prod .p-ar{font-size:12.5px; line-height:1.4}
+.prod .p-en{font-size:9.5px; line-height:1.35}
+.prod .p-foot{padding-top:5px}
+.prod .p-price{font-size:15px}
+.prod .p-price span{font-size:9px; margin-inline-start:3px}
+.prod .p-wt{font-size:9.5px}
+.product-meta{font-size:9px}
+.product-add{width:21px; height:21px; font-size:15px; border-radius:7px}
+
+@media(max-width:700px){
+  .prod-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,132px),1fr)); gap:8px}
+  .prod{min-height:112px; padding:10px}
+  .prod .p-ar{font-size:12px}
+  .prod .p-price{font-size:14px}
+}
+
+
+/* ============================================================
+   شاشة القفل
+   ============================================================ */
+.lock-gate{
+  position:fixed; inset:0; z-index:300;
+  background:linear-gradient(140deg,var(--primary-deep),var(--primary) 55%,var(--primary-light));
+  display:grid; place-items:center; padding:20px;
+}
+.lock-gate[hidden]{display:none}
+body.locked{overflow:hidden}
+.lock-box{
+  background:var(--card); border-radius:var(--r-lg); box-shadow:var(--sh-pop);
+  padding:30px 28px; width:100%; max-width:340px; text-align:center;
+}
+.lock-logo{
+  width:62px; height:62px; margin:0 auto 16px; border-radius:50%; background:#2E2521;
+  color:#fff; display:grid; place-items:center; font-weight:400; letter-spacing:1.5px; font-size:16px;
+  border:2px solid var(--accent-light);
+}
+.lock-box h2{font-size:16px; font-weight:800; line-height:1.4}
+.lock-box p{margin:6px 0 18px; font-size:13px; color:var(--muted)}
+.lock-box input{text-align:center; font-size:19px; letter-spacing:5px; padding:12px}
+.lock-box .btn{width:100%; margin-top:14px; justify-content:center}
+.lock-error{min-height:18px; margin-top:9px; font-size:12.5px; font-weight:600; color:var(--danger)}
+
+
+/* ============================================================
+   ===== رفع التباين =====
+   كانت خلفية الصفحة عند إضاءة 96.5% والبطاقة عند 99% — فرق
+   2.5% لا تكاد العين تميّزه، فبدا كل شيء لوناً واحداً. هنا
+   نُعمّق الخلفية ونُبقي البطاقة بيضاء نقية، ونُظهر الحدود.
+   ============================================================ */
+:root{
+  --bg:oklch(93% .016 66);
+  --surface:oklch(89.5% .021 66);
+  --card:#FFFFFF;
+  --border:oklch(83.5% .026 66);
+  --border-soft:oklch(89% .018 66);
+  --line:var(--border);
+  --sh-card:0 1px 2px oklch(28% .019 50 / .05), 0 4px 14px -6px oklch(28% .019 50 / .10);
+  --sh-lux:0 1px 3px oklch(28% .019 50 / .05), 0 10px 30px -10px oklch(28% .019 50 / .14);
+}
+
+/* الشريط العلوي والتبويبات يقرآن كشريط أبيض فوق خلفية أعمق */
+.topbar{border-bottom:1px solid var(--border)}
+.nav{border-bottom:1px solid var(--border); box-shadow:0 1px 0 oklch(28% .019 50 / .04)}
+.nav button.active{
+  background:linear-gradient(135deg,var(--primary-light),var(--primary));
+  color:#fff; box-shadow:0 4px 12px -5px oklch(47% .125 35 / .6);
+}
+
+/* البطاقات ترتفع عن الخلفية بحدّ وظلّ واضحين */
+.card,.stat{box-shadow:var(--sh-card); border-color:var(--border)}
+.prod{box-shadow:0 1px 2px oklch(28% .019 50 / .05); border-color:var(--border)}
+.prod:hover{
+  border-color:var(--primary); background:#fff;
+  box-shadow:0 4px 14px -5px oklch(47% .125 35 / .28);
+}
+
+/* شارة القسم داخل البطاقة: حبّة ملوّنة بدل نص رمادي باهت */
+.product-meta > span:first-child{
+  background:var(--surface); color:var(--primary);
+  padding:2px 8px; border-radius:999px; font-weight:700;
+}
+.product-add{background:oklch(95% .03 40); border-color:transparent; color:var(--primary); font-weight:700}
+
+/* حقول الإدخال تبين على البطاقة البيضاء */
+input[type=text],input[type=number],input[type=date],input[type=tel],
+input[type=password],input[type=search],select,textarea{
+  background:oklch(98.5% .006 66); border-color:var(--border);
+}
+input:focus,select:focus,textarea:focus{background:#fff}
+
+/* رؤوس الجداول وصفوفها المتناوبة */
+tbody tr:nth-child(even) td{background:oklch(97% .01 66)}
+.totals{background:var(--surface); border-top:1px solid var(--border)}

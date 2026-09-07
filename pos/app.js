@@ -184,6 +184,16 @@ $('#nav').addEventListener('click', e => {
   if (!b) return;
   $$('#nav button').forEach(x => x.classList.toggle('active', x === b));
   $$('#nav button').forEach(x => x === b ? x.setAttribute('aria-current', 'page') : x.removeAttribute('aria-current'));
+  if (b.dataset.page === 'settings' && !gotoSettingsAllowed) {
+    // نمنع الانتقال حتى يُتحقّق من الرمز، ثم نعيد النقر تلقائياً
+    Lock.requireSettings().then(ok => {
+      if (!ok) return;
+      gotoSettingsAllowed = true;
+      b.click();
+      gotoSettingsAllowed = false;
+    });
+    return;
+  }
   const copy = pageCopy[b.dataset.page];
   $('#pageTitle').textContent = t(copy[0]);
   $('#pageDescription').textContent = t(copy[1]);
@@ -195,6 +205,7 @@ $('#nav').addEventListener('click', e => {
 /* ══════════════ نقطة البيع ══════════════ */
 let cart = [];
 let activeCat = 'meals';
+let gotoSettingsAllowed = false;   // يصبح true للحظة بعد نجاح التحقّق
 
 $('.pos-switch').addEventListener('click', e => {
   const button = e.target.closest('[data-pos-view]');
@@ -1108,6 +1119,7 @@ function fillSettings() {
   $('#sVat').value = s.vatEnabled ? '1' : '0';
   $('#sVatRate').value = s.vatRate;
   renderLogoPreview();
+  renderSecurity();
   const sc = db.settings.sync || {};
   $('#sSyncUrl').value = sc.url || '';
   $('#sSyncKey').value = sc.key || '';
@@ -1171,6 +1183,57 @@ $('#btnLogoClear').addEventListener('click', () => {
   toast(t('رجع الشعار الافتراضي'));
 });
 
+/* ---------- الحماية برمز دخول ---------- */
+function renderSecurity() {
+  const st = Lock.state();
+  $('#appCodeState').textContent = st.hasApp ? t('مفعّل') : t('غير مفعّل');
+  $('#setCodeState').textContent = st.hasSettings ? t('مفعّل') : t('غير مفعّل');
+  $('#btnSetAppCode').textContent = t(st.hasApp ? 'تغيير' : 'تعيين');
+  $('#btnSetSetCode').textContent = t(st.hasSettings ? 'تغيير' : 'تعيين');
+  $('#btnClearAppCode').hidden = !st.hasApp;
+  $('#btnClearSetCode').hidden = !st.hasSettings;
+  $('#btnLockNow').hidden = !st.hasApp;
+  $('#secInfo').textContent = (st.hasApp || st.hasSettings) ? t('مفعّل') : t('غير مفعّل');
+}
+
+/** يطلب رمزاً جديداً مرتين للتأكد من عدم الخطأ في الكتابة */
+async function promptNewCode(kind, label) {
+  if (!(await Lock.confirmCurrent(kind))) return;
+  const a = await Lock.askNew(t(label));
+  if (a === null) return;
+  if (a.length < 4) return toast(t('الرمز لا يقل عن 4 خانات'), 'err');
+  const b = await Lock.askNew(t('أعد إدخال الرمز للتأكيد'));
+  if (b === null) return;
+  if (a !== b) return toast(t('الرمزان غير متطابقين'), 'err');
+  await Lock.setCode(kind, a);
+  renderSecurity();
+  toast(t('تم حفظ الرمز'), 'ok');
+}
+
+$('#btnSetAppCode').addEventListener('click', () => promptNewCode('app', 'رمز الدخول الجديد'));
+$('#btnSetSetCode').addEventListener('click', () => promptNewCode('settings', 'رمز الإعدادات الجديد'));
+
+$('#btnClearAppCode').addEventListener('click', async () => {
+  if (!(await Lock.confirmCurrent('app'))) return;
+  await Lock.clearCode('app'); renderSecurity(); toast(t('تم إلغاء رمز الدخول'));
+});
+$('#btnClearSetCode').addEventListener('click', async () => {
+  if (!(await Lock.confirmCurrent('settings'))) return;
+  await Lock.clearCode('settings'); renderSecurity(); toast(t('تم إلغاء رمز الإعدادات'));
+});
+
+$('#btnLockNow').addEventListener('click', () => Lock.lockNow());
+
+/* أحداث شاشة القفل ونافذة طلب الرمز */
+$('#lockBtn').addEventListener('click', () => Lock.tryUnlock());
+$('#lockInput').addEventListener('keydown', e => { if (e.key === 'Enter') Lock.tryUnlock(); });
+$('#askOk').addEventListener('click', () => Lock.askDone($('#askInput').value));
+$('#askCancel').addEventListener('click', () => Lock.askDone(null));
+$('#askInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') Lock.askDone($('#askInput').value);
+  if (e.key === 'Escape') Lock.askDone(null);
+});
+
 /* ---------- المزامنة السحابية ---------- */
 /** يقرأ حقول المزامنة من الشاشة ويحفظها — يُستدعى من زر البطاقة ومن حفظ الإعدادات */
 function saveSyncSettings() {
@@ -1221,7 +1284,10 @@ $('#btnSyncTest').addEventListener('click', async () => {
 
 $('#btnBackup').addEventListener('click', () => {
   db.lastBackup = new Date().toISOString(); save();
-  downloadBlob(JSON.stringify(db, null, 2), `نسخة-احتياطية-${todayISO()}.json`, 'application/json');
+  // نستبعد الرموز من الملف: استعادة نسخة احتياطية = مسار خروج آمن عند نسيان الرمز
+  const { security, ...safe } = db.settings;
+  downloadBlob(JSON.stringify({ ...db, settings: safe }, null, 2),
+    `نسخة-احتياطية-${todayISO()}.json`, 'application/json');
   fillSettings(); toast(t('تم تنزيل النسخة الاحتياطية'), 'ok');
 });
 $('#btnRestore').addEventListener('click', () => $('#restoreFile').click());
@@ -1309,6 +1375,7 @@ function tick() {
 
 (async function start() {
   await load();
+  Lock.guard();                       // يقفل الشاشة إن كان هناك رمز دخول
   I18n.set(db.settings.lang || 'ar');
   applyBranding();
   renderCatTabs();

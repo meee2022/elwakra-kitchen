@@ -8,9 +8,23 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="app.css?v=13">
+<link rel="stylesheet" href="app.css?v=15">
 </head>
 <body>
+
+<!-- شاشة القفل — مرئية افتراضياً، ويخفيها التشغيل إن لم يكن هناك رمز -->
+<div class="lock-gate" id="lockGate">
+  <div class="lock-box">
+    <div class="lock-logo">STDK</div>
+    <h2 data-i18n="مطابخ الجنوب للمأكولات الشعبية">مطابخ الجنوب للمأكولات الشعبية</h2>
+    <p data-i18n="أدخل رمز الدخول للمتابعة">أدخل رمز الدخول للمتابعة</p>
+    <input type="password" id="lockInput" inputmode="numeric" autocomplete="current-password"
+           data-i18n-ph="رمز الدخول" placeholder="رمز الدخول">
+    <div class="lock-error" id="lockError"></div>
+    <button class="btn btn-primary btn-lg" id="lockBtn" data-i18n="دخول">دخول</button>
+  </div>
+</div>
+
 
 <div class="appbar">
 <header class="topbar">
@@ -20,6 +34,7 @@
     <div class="sub" id="hdrNameEn">Southern Traditional Dishes Kitchens</div>
   </div>
   <span class="sync-badge" id="syncBadge" hidden></span>
+  <button class="lang-btn" id="btnLockNow" type="button" data-i18n-title="قفل الشاشة" title="قفل الشاشة" hidden>&#128274;</button>
   <button class="lang-btn" id="btnLang" type="button" aria-label="Switch to English">English</button>
   <div class="clock" id="clock"></div>
 </header>
@@ -271,6 +286,36 @@
       </div>
 
       <div class="card" style="margin-bottom:16px">
+        <div class="card-h"><h3 data-i18n="الحماية برمز دخول">الحماية برمز دخول</h3>
+          <span class="muted right" id="secInfo" style="font-size:12px"></span>
+        </div>
+        <div class="card-b">
+          <p class="muted" style="margin-top:0; font-size:13.5px"
+             data-i18n="رمز الدخول يُطلب عند فتح الموقع، ورمز الإعدادات يُطلب عند دخول هذه الشاشة. الرمز نفسه لا يُحفظ — تُحفظ بصمته فقط.">رمز الدخول يُطلب عند فتح الموقع، ورمز الإعدادات يُطلب عند دخول هذه الشاشة. الرمز نفسه لا يُحفظ — تُحفظ بصمته فقط.</p>
+          <div class="grid2">
+            <div>
+              <label class="f" data-i18n="رمز الدخول للموقع">رمز الدخول للموقع</label>
+              <div class="row">
+                <button class="btn btn-primary btn-sm" id="btnSetAppCode" data-i18n="تعيين">تعيين</button>
+                <button class="btn btn-danger btn-sm" id="btnClearAppCode" data-i18n="إزالة">إزالة</button>
+                <span class="muted" id="appCodeState" style="font-size:12px"></span>
+              </div>
+            </div>
+            <div>
+              <label class="f" data-i18n="رمز شاشة الإعدادات">رمز شاشة الإعدادات</label>
+              <div class="row">
+                <button class="btn btn-primary btn-sm" id="btnSetSetCode" data-i18n="تعيين">تعيين</button>
+                <button class="btn btn-danger btn-sm" id="btnClearSetCode" data-i18n="إزالة">إزالة</button>
+                <span class="muted" id="setCodeState" style="font-size:12px"></span>
+              </div>
+            </div>
+          </div>
+          <div class="note" style="margin-top:14px"
+               data-i18n="لو نسيت الرمز: استعد نسخة احتياطية — ملف النسخة لا يحتوي الرموز، فيفتح النظام بلا قفل. النظام يعمل داخل المتصفح، فالقفل يمنع التصفّح العابر ولا يحمي من شخص تقني يملك الجهاز.">لو نسيت الرمز: استعد نسخة احتياطية — ملف النسخة لا يحتوي الرموز، فيفتح النظام بلا قفل. النظام يعمل داخل المتصفح، فالقفل يمنع التصفّح العابر ولا يحمي من شخص تقني يملك الجهاز.</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
         <div class="card-h"><h3 data-i18n="المزامنة السحابية">المزامنة السحابية</h3>
           <span class="muted right" id="syncInfo" style="font-size:12px"></span>
         </div>
@@ -351,12 +396,29 @@
   </div>
 </div>
 
+<!-- نافذة طلب رمز -->
+<div class="modal" id="askModal">
+  <div class="modal-box" style="max-width:400px">
+    <div class="modal-h"><h3 id="askTitle"></h3></div>
+    <div class="modal-b">
+      <input type="password" id="askInput" inputmode="numeric" autocomplete="off"
+             data-i18n-ph="الرمز" placeholder="الرمز">
+      <div class="lock-error" id="askError" style="text-align:start"></div>
+    </div>
+    <div class="modal-f">
+      <button class="btn btn-primary" id="askOk" data-i18n="تأكيد">تأكيد</button>
+      <button class="btn" id="askCancel" data-i18n="إلغاء">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" role="status" aria-live="polite"></div>
 
-<script src="i18n.js?v=12"></script>
-<script src="data.js?v=12"></script>
-<script src="qr.js?v=12"></script>
-<script src="sync.js?v=12"></script>
-<script src="app.js?v=14"></script>
+<script src="i18n.js?v=15"></script>
+<script src="lock.js?v=15"></script>
+<script src="data.js?v=15"></script>
+<script src="qr.js?v=15"></script>
+<script src="sync.js?v=15"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>

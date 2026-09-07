@@ -2,7 +2,7 @@
    عامل الخدمة — يخزّن ملفات النظام محلياً ليعمل بدون إنترنت.
    غيّر رقم CACHE عند تحديث أي ملف حتى تصل النسخة الجديدة للأجهزة.
    ============================================================ */
-const CACHE = 'stdk-pos-v12';
+const CACHE = 'stdk-pos-v15';
 const ASSETS = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ const ASSETS = [
   './data.js',
   './qr.js',
   './i18n.js',
+  './lock.js',
   './sync.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
