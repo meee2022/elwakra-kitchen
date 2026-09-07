@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>متابعة المبيعات — مطابخ الجنوب</title>
+<meta name="theme-color" content="#A63C22">
+<link rel="icon" href="icons/favicon.png">
+<style>
+:root{
+  --brand:#A63C22; --brand-dark:#7C2D17; --cream:#FAF6F1; --paper:#fff;
+  --ink:#2A211D; --muted:#8A7C74; --line:#E6DCD3;
+  --ok:#1E7A4B; --warn:#B4791A;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--cream);color:var(--ink);
+     font-family:"Segoe UI",Tahoma,system-ui,sans-serif;font-size:15px;line-height:1.55}
+header{background:linear-gradient(135deg,var(--brand-dark),var(--brand));color:#fff;
+       padding:14px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:9}
+header .logo{width:40px;height:40px;border-radius:50%;background:#2E2521;display:grid;
+  place-items:center;font-weight:700;font-size:12px;border:2px solid rgba(255,255,255,.8);flex:none}
+header h1{margin:0;font-size:16px;font-weight:800}
+header .sub{font-size:11px;opacity:.85}
+main{padding:14px;max-width:900px;margin:0 auto}
+
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;
+      box-shadow:0 1px 2px rgba(42,33,29,.06);margin-bottom:14px;overflow:hidden}
+.card-h{padding:11px 15px;border-bottom:1px solid var(--line);font-weight:700;font-size:14px;
+        display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card-b{padding:15px}
+
+label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:5px}
+input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:10px;
+             background:var(--paper);outline:none;font-family:inherit;font-size:15px}
+input:focus,select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(166,60,34,.12)}
+.btn{border:1px solid var(--line);background:var(--paper);padding:10px 16px;border-radius:10px;
+     font-weight:600;font-family:inherit;font-size:14px;cursor:pointer}
+.btn-primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.right{margin-inline-start:auto}
+.muted{color:var(--muted)}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.stat{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 14px;position:relative;overflow:hidden}
+.stat::before{content:'';position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;background:var(--brand)}
+.stat.g::before{background:var(--ok)} .stat.w::before{background:var(--warn)}
+.stat .l{font-size:11.5px;color:var(--muted);font-weight:600}
+.stat .v{font-size:22px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums}
+.stat .s{font-size:11px;color:var(--muted)}
+
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);font-size:13.5px}
+th{background:var(--cream);font-size:12px;color:var(--muted);font-weight:700}
+.num{font-variant-numeric:tabular-nums;direction:ltr;text-align:center}
+.bar{height:5px;background:var(--line);border-radius:99px;overflow:hidden;min-width:44px}
+.bar div{height:100%;background:var(--brand)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--paper);padding:6px 13px;border-radius:999px;
+      font-weight:600;font-size:13px;cursor:pointer;font-family:inherit}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.msg{padding:11px 14px;border-radius:10px;font-size:13.5px;margin-bottom:12px}
+.msg.err{background:#FBEAE9;border:1px solid #f0cfcd;color:#B3261E}
+.msg.info{background:#FCF3E2;border:1px solid #f0dfba;color:#7a5410}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">STDK</div>
+  <div style="flex:1;min-width:0">
+    <h1>متابعة المبيعات</h1>
+    <div class="sub">مطابخ الجنوب للمأكولات الشعبية</div>
+  </div>
+  <button class="btn" id="btnRefresh" style="background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.3);color:#fff" hidden>تحديث</button>
+</header>
+
+<main>
+
+<!-- إعداد الاتصال -->
+<div class="card" id="setup">
+  <div class="card-h">الاتصال بقاعدة البيانات</div>
+  <div class="card-b">
+    <div id="setupMsg"></div>
+    <div style="margin-bottom:11px">
+      <label>رابط النشرة (Deployment URL)</label>
+      <input type="text" id="url" dir="ltr" placeholder="https://xxxx.convex.cloud">
+    </div>
+    <div style="margin-bottom:14px">
+      <label>مفتاح المزامنة</label>
+      <input type="password" id="key" dir="ltr" placeholder="نفس المفتاح المضبوط في Convex">
+    </div>
+    <div class="row">
+      <button class="btn btn-primary" id="btnConnect">اتصال</button>
+      <span class="muted" style="font-size:12.5px">يُحفظ على هذا الجهاز فقط.</span>
+    </div>
+  </div>
+</div>
+
+<!-- اللوحة -->
+<div id="board" hidden>
+  <div class="card">
+    <div class="card-h">
+      الفترة
+      <div class="chips right" id="quick">
+        <button class="chip on" data-q="today">اليوم</button>
+        <button class="chip" data-q="week">آخر 7 أيام</button>
+        <button class="chip" data-q="month">هذا الشهر</button>
+        <button class="chip" data-q="year">هذه السنة</button>
+      </div>
+    </div>
+    <div class="card-b row">
+      <div style="flex:1;min-width:130px"><label>من</label><input type="date" id="from"></div>
+      <div style="flex:1;min-width:130px"><label>إلى</label><input type="date" id="to"></div>
+    </div>
+  </div>
+
+  <div id="boardMsg"></div>
+  <div class="stats" id="stats"></div>
+
+  <div class="card">
+    <div class="card-h">الأصناف الأكثر مبيعاً</div>
+    <div style="max-height:60vh;overflow:auto">
+      <table><thead><tr><th style="width:34px">#</th><th>الصنف</th>
+        <th style="width:60px">الكمية</th><th style="width:88px">القيمة</th><th style="width:80px"></th></tr></thead>
+        <tbody id="items"></tbody></table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">المبيعات اليومية</div>
+    <div style="max-height:50vh;overflow:auto">
+      <table><thead><tr><th>التاريخ</th><th style="width:64px">فواتير</th>
+        <th style="width:64px">وجبات</th><th style="width:96px">الإجمالي</th></tr></thead>
+        <tbody id="days"></tbody></table>
+    </div>
+  </div>
+
+  <div class="row" style="margin-bottom:24px">
+    <button class="btn" id="btnLogout">تغيير بيانات الاتصال</button>
+    <span class="muted right" id="lastSync" style="font-size:12px"></span>
+  </div>
+</div>
+
+</main>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const KEY = 'stdk_dashboard';
+const money = n => (Math.round(Number(n || 0) * 100) / 100)
+  .toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const todayISO = () => new Date().toLocaleDateString('en-CA');
+const fmtDate = iso => { const [y,m,d] = String(iso).split('-'); return `${d}/${m}/${y}`; };
+
+let cfg = null;
+
+function loadCfg() {
+  try { cfg = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { cfg = null; }
+}
+
+async function call(path, args) {
+  const base = cfg.url.replace(/\/+$/, '');
+  const res = await fetch(`${base}/api/query`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, args: { key: cfg.key, ...args }, format: 'json' })
+  });
+  if (!res.ok) throw new Error(`الخادم رد بالحالة ${res.status}`);
+  const out = await res.json();
+  if (out.status !== 'success') throw new Error(out.errorMessage || 'خطأ من الخادم');
+  return out.value;
+}
+
+/* ---------- الاتصال ---------- */
+$('#btnConnect').addEventListener('click', async () => {
+  const url = $('#url').value.trim(), key = $('#key').value.trim();
+  if (!url || !key) return msg('#setupMsg', 'اكتب رابط النشرة والمفتاح.', 'err');
+  cfg = { url, key };
+  msg('#setupMsg', 'جاري الاتصال…', 'info');
+  try {
+    await call('invoices:summary', { from: todayISO(), to: todayISO() });
+    localStorage.setItem(KEY, JSON.stringify(cfg));
+    msg('#setupMsg', '');
+    showBoard();
+  } catch (e) {
+    cfg = null;
+    msg('#setupMsg', 'فشل الاتصال: ' + esc(e.message), 'err');
+  }
+});
+
+$('#btnLogout').addEventListener('click', () => {
+  localStorage.removeItem(KEY);
+  cfg = null;
+  $('#board').hidden = true; $('#setup').hidden = false; $('#btnRefresh').hidden = true;
+});
+
+function msg(sel, text, kind) {
+  $(sel).innerHTML = text ? `<div class="msg ${kind || 'info'}">${text}</div>` : '';
+}
+
+/* ---------- الفترة ---------- */
+function setQuick(q) {
+  const t = todayISO();
+  if (q === 'today') { $('#from').value = t; $('#to').value = t; }
+  else if (q === 'week') { const d = new Date(); d.setDate(d.getDate() - 6);
+    $('#from').value = d.toLocaleDateString('en-CA'); $('#to').value = t; }
+  else if (q === 'month') { $('#from').value = t.slice(0, 8) + '01'; $('#to').value = t; }
+  else { $('#from').value = t.slice(0, 4) + '-01-01'; $('#to').value = t; }
+}
+$('#quick').addEventListener('click', e => {
+  const b = e.target.closest('.chip');
+  if (!b) return;
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c === b));
+  setQuick(b.dataset.q);
+  refresh();
+});
+['#from', '#to'].forEach(s => $(s).addEventListener('change', refresh));
+$('#btnRefresh').addEventListener('click', refresh);
+
+/* ---------- العرض ---------- */
+function showBoard() {
+  $('#setup').hidden = true;
+  $('#board').hidden = false;
+  $('#btnRefresh').hidden = false;
+  setQuick('today');
+  refresh();
+}
+
+const stat = (l, v, s, cls) =>
+  `<div class="stat ${cls || ''}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s || '&nbsp;'}</div></div>`;
+
+async function refresh() {
+  if (!cfg) return;
+  msg('#boardMsg', 'جاري التحميل…', 'info');
+  try {
+    const r = await call('invoices:summary', { from: $('#from').value, to: $('#to').value });
+    msg('#boardMsg', '');
+
+    $('#stats').innerHTML =
+      stat('إجمالي المبيعات', money(r.total) + ' ر.ق', r.invoices + ' فاتورة') +
+      stat('الوجبات المباعة', r.units, 'وحدة', 'g') +
+      stat('نقداً', money(r.cash) + ' ر.ق', '', 'g') +
+      stat('على الحساب', money(r.credit) + ' ر.ق', 'غير محصّل: ' + money(r.unpaid), 'w') +
+      stat('متوسط الفاتورة', money(r.invoices ? r.total / r.invoices : 0) + ' ر.ق', '') +
+      stat('فواتير ملغاة', r.voided, '');
+
+    const max = r.topItems.length ? r.topItems[0].qty : 1;
+    $('#items').innerHTML = r.topItems.length
+      ? r.topItems.map((it, i) => `<tr>
+          <td class="num">${i + 1}</td><td>${esc(it.ar)}</td>
+          <td class="num"><b>${it.qty}</b></td><td class="num">${money(it.val)}</td>
+          <td><div class="bar"><div style="width:${(it.qty / max * 100).toFixed(1)}%"></div></div></td>
+        </tr>`).join('')
+      : '<tr><td colspan="5"><div class="empty">لا توجد مبيعات في هذه الفترة</div></td></tr>';
+
+    $('#days').innerHTML = r.days.length
+      ? r.days.map(d => `<tr><td class="num">${fmtDate(d.date)}</td><td class="num">${d.n}</td>
+          <td class="num">${d.units}</td><td class="num"><b>${money(d.total)}</b></td></tr>`).join('')
+      : '<tr><td colspan="4"><div class="empty">لا توجد بيانات</div></td></tr>';
+
+    $('#lastSync').textContent = r.lastSync
+      ? 'آخر فاتورة وصلت: ' + new Date(r.lastSync).toLocaleString('ar-QA')
+      : 'لم تصل أي فاتورة بعد';
+  } catch (e) {
+    msg('#boardMsg', 'تعذّر التحميل: ' + esc(e.message), 'err');
+  }
+}
+
+/* ---------- التشغيل ---------- */
+loadCfg();
+if (cfg && cfg.url && cfg.key) showBoard();
+else {
+  const p = new URLSearchParams(location.search);
+  if (p.get('url')) $('#url').value = p.get('url');
+}
+</script>
+</body>
+</html>

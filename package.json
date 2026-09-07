@@ -1,0 +1,14 @@
+{
+  "name": "stdk-pos",
+  "version": "1.0.0",
+  "private": true,
+  "description": "نظام نقاط البيع والفواتير الإلكترونية — مطابخ الجنوب للمأكولات الشعبية",
+  "scripts": {
+    "dev": "convex dev",
+    "deploy": "convex deploy",
+    "pos": "python -m http.server 8777 --directory pos"
+  },
+  "devDependencies": {
+    "convex": "^1.17.0"
+  }
+}
