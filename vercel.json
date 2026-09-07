@@ -5,7 +5,7 @@
   "buildCommand": "echo \"Nothing to build — plain HTML/CSS/JS\"",
   "outputDirectory": ".",
   "cleanUrls": false,
-  "trailingSlash": false,
+  "trailingSlash": true,
   "headers": [
     {
       "source": "/(.*)",
