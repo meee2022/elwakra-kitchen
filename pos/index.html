@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="app.css?v=10">
+<link rel="stylesheet" href="app.css?v=13">
 </head>
 <body>
 
@@ -41,6 +41,10 @@
 <!-- ══════════════ نقطة البيع ══════════════ -->
 <section class="page active" id="page-pos">
   <div class="pos">
+    <div class="pos-switch" role="group" aria-label="عرض نقطة البيع">
+      <button type="button" data-pos-view="catalog" aria-pressed="true">الأصناف</button>
+      <button type="button" data-pos-view="cart" aria-pressed="false">الفاتورة <span id="mobileCartCount" aria-live="polite">0</span><span id="mobileCartTotal">0.00 ر.ق</span></button>
+    </div>
     <div class="catalog">
       <div class="catalog-search"><label for="prodSearch">قائمة الأصناف</label><input type="search" id="prodSearch" placeholder="ابحث باسم الصنف بالعربي أو الإنجليزي…"></div>
       <div class="catalog-toolbar"><div class="cat-tabs" id="catTabs" aria-label="أقسام الأصناف"></div><span class="muted" id="productCount" aria-live="polite"></span></div>
@@ -56,27 +60,28 @@
 
         <div class="cart-scroll">
         <div class="card-b" style="padding-bottom:8px">
-          <div class="grid2">
-            <div><label class="f">اسم العميل / السادة</label><input type="text" id="cName" placeholder="اختياري"></div>
-            <div><label class="f">رقم الجوال</label><input type="tel" id="cPhone" placeholder="اختياري"></div>
-          </div>
+          <div><label class="f" for="cName">اسم العميل / الجهة</label><input type="text" id="cName" placeholder="اسم الشخص أو الشركة أو الوزارة (اختياري)"></div>
           <div class="grid2" style="margin-top:10px">
-            <div><label class="f">نوع الدفع</label>
+            <div><label class="f" for="payType">نوع الدفع</label>
               <select id="payType"><option value="cash">نقداً</option><option value="credit">على الحساب</option></select>
             </div>
-            <div><label class="f">تاريخ الفاتورة</label><input type="date" id="invDate"></div>
+            <div><label class="f" for="invDate">تاريخ الفاتورة</label><input type="date" id="invDate"></div>
           </div>
         </div>
 
         <div class="cart-items" id="cartItems"></div>
 
-        <div class="card-b" style="border-top:1px solid var(--line); padding-top:12px">
-          <div class="grid2">
-            <div><label class="f">خصم (ر.ق)</label><input type="number" id="discount" value="0" min="0" step="0.25"></div>
-            <div><label class="f">توصيل (ر.ق)</label><input type="number" id="delivery" value="0" min="0" step="0.25"></div>
+        <details class="invoice-details"><summary>الجوال والخصم والتوصيل</summary><div class="card-b">          <div class="grid2">
+            
+            <div><label class="f" for="cPhone">رقم الجوال</label><input type="tel" id="cPhone" placeholder="اختياري"></div>
           </div>
-          <div style="margin-top:10px"><label class="f">ملاحظات على الفاتورة</label><input type="text" id="invNote" placeholder="اختياري"></div>
-        </div>
+
+          <div class="grid2">
+            <div><label class="f" for="discount">خصم (ر.ق)</label><input type="number" id="discount" value="0" min="0" step="0.25"></div>
+            <div><label class="f" for="delivery">توصيل (ر.ق)</label><input type="number" id="delivery" value="0" min="0" step="0.25"></div>
+          </div>
+          <div style="margin-top:10px"><label class="f" for="invNote">ملاحظات على الفاتورة</label><input type="text" id="invNote" placeholder="اختياري"></div>
+        </div></details>
         </div>
 
         <div class="totals">
@@ -104,7 +109,7 @@
     <div class="card-h">
       <h3>سجل الفواتير</h3>
       <div class="row right">
-        <input type="text" id="invSearch" placeholder="بحث برقم الفاتورة أو اسم العميل" style="width:250px">
+        <input type="text" id="invSearch" placeholder="بحث برقم الفاتورة أو اسم العميل / الجهة" style="width:250px">
         <select id="invFilter" style="width:150px">
           <option value="all">كل الفواتير</option>
           <option value="cash">نقداً</option>
@@ -121,7 +126,7 @@
       <table id="invTable">
         <thead><tr>
           <th style="width:90px">رقم الفاتورة</th><th style="width:105px">التاريخ</th><th style="width:70px">الوقت</th>
-          <th>العميل</th><th style="width:60px">أصناف</th><th style="width:110px">الإجمالي</th>
+          <th>العميل / الجهة</th><th style="width:60px">أصناف</th><th style="width:110px">الإجمالي</th>
           <th style="width:110px">الحالة</th><th style="width:230px">إجراءات</th>
         </tr></thead>
         <tbody id="invBody"></tbody>
@@ -214,19 +219,19 @@
       <div class="card-h"><h3>بيانات المنشأة (تظهر على كل فاتورة إلكترونية)</h3></div>
       <div class="card-b">
         <div class="grid2">
-          <div><label class="f">الاسم التجاري بالعربي</label><input type="text" id="sNameAr"></div>
-          <div><label class="f">الاسم التجاري بالإنجليزي</label><input type="text" id="sNameEn"></div>
-          <div><label class="f">رقم السجل التجاري</label><input type="text" id="sCr"></div>
-          <div><label class="f">رقم قيد المنشأة</label><input type="text" id="sEntity"></div>
-          <div><label class="f">رقم التسجيل الضريبي</label><input type="text" id="sTax"></div>
-          <div><label class="f">اسم المالك</label><input type="text" id="sOwner"></div>
-          <div><label class="f">النشاط التجاري</label><input type="text" id="sActivity"></div>
-          <div><label class="f">الهاتف</label><input type="text" id="sTel"></div>
-          <div><label class="f">الجوال</label><input type="text" id="sMobile"></div>
-          <div><label class="f">صندوق البريد</label><input type="text" id="sPo"></div>
-          <div><label class="f">المدينة / الدولة</label><input type="text" id="sCity"></div>
+          <div><label class="f" for="sNameAr">الاسم التجاري بالعربي</label><input type="text" id="sNameAr"></div>
+          <div><label class="f" for="sNameEn">الاسم التجاري بالإنجليزي</label><input type="text" id="sNameEn"></div>
+          <div><label class="f" for="sCr">رقم السجل التجاري</label><input type="text" id="sCr"></div>
+          <div><label class="f" for="sEntity">رقم قيد المنشأة</label><input type="text" id="sEntity"></div>
+          <div><label class="f" for="sTax">رقم التسجيل الضريبي</label><input type="text" id="sTax"></div>
+          <div><label class="f" for="sOwner">اسم المالك</label><input type="text" id="sOwner"></div>
+          <div><label class="f" for="sActivity">النشاط التجاري</label><input type="text" id="sActivity"></div>
+          <div><label class="f" for="sTel">الهاتف</label><input type="text" id="sTel"></div>
+          <div><label class="f" for="sMobile">الجوال</label><input type="text" id="sMobile"></div>
+          <div><label class="f" for="sPo">صندوق البريد</label><input type="text" id="sPo"></div>
+          <div><label class="f" for="sCity">المدينة / الدولة</label><input type="text" id="sCity"></div>
         </div>
-        <div style="margin-top:12px"><label class="f">العبارة التعريفية</label><input type="text" id="sSlogan"></div>
+        <div style="margin-top:12px"><label class="f" for="sSlogan">العبارة التعريفية</label><input type="text" id="sSlogan"></div>
         <div style="margin-top:14px">
           <label class="f">شعار المطبخ على الفاتورة</label>
           <div class="row">
@@ -247,17 +252,17 @@
         <div class="card-h"><h3>إعدادات الفوترة</h3></div>
         <div class="card-b">
           <div class="grid2">
-            <div><label class="f">رقم الفاتورة القادمة</label><input type="number" id="sNextNo"></div>
-            <div><label class="f">مقاس الطباعة</label>
+            <div><label class="f" for="sNextNo">رقم الفاتورة القادمة</label><input type="number" id="sNextNo"></div>
+            <div><label class="f" for="sPrintSize">مقاس الطباعة</label>
               <select id="sPrintSize"><option value="a5">A5 (ورق عادي)</option><option value="thermal">رول حراري 80 مم</option></select>
             </div>
-            <div><label class="f">كتابة المبلغ بالحروف</label>
+            <div><label class="f" for="sTafqeet">كتابة المبلغ بالحروف</label>
               <select id="sTafqeet"><option value="1">نعم</option><option value="0">لا</option></select>
             </div>
-            <div><label class="f">ضريبة القيمة المضافة</label>
+            <div><label class="f" for="sVat">ضريبة القيمة المضافة</label>
               <select id="sVat"><option value="0">غير مفعّلة</option><option value="1">مفعّلة</option></select>
             </div>
-            <div><label class="f">نسبة الضريبة %</label><input type="number" id="sVatRate" min="0" max="100" step="0.5"></div>
+            <div><label class="f" for="sVatRate">نسبة الضريبة %</label><input type="number" id="sVatRate" min="0" max="100" step="0.5"></div>
           </div>
           <div class="row" style="margin-top:14px">
             <button class="btn btn-primary" id="btnSaveSettings">حفظ الإعدادات</button>
@@ -276,9 +281,9 @@
             تلقائياً لقاعدة البيانات السحابية عشان تتابعها من الموبايل ويبقى عندك نسخة برّه الجهاز.
           </p>
           <div class="grid2">
-            <div><label class="f">رابط النشرة (Deployment URL)</label>
+            <div><label class="f" for="sSyncUrl">رابط النشرة (Deployment URL)</label>
               <input type="text" id="sSyncUrl" placeholder="https://xxxx.convex.cloud" dir="ltr"></div>
-            <div><label class="f">مفتاح المزامنة (SYNC_KEY)</label>
+            <div><label class="f" for="sSyncKey">مفتاح المزامنة (SYNC_KEY)</label>
               <input type="text" id="sSyncKey" placeholder="نفس المفتاح المضبوط في Convex" dir="ltr"></div>
           </div>
           <div class="row" style="margin-top:12px">
@@ -321,14 +326,14 @@
     <div class="modal-h"><h3 id="pmTitle">إضافة صنف</h3><button class="x" data-close>&times;</button></div>
     <div class="modal-b">
       <div class="grid2">
-        <div><label class="f">الاسم بالعربي *</label><input type="text" id="fAr"></div>
-        <div><label class="f">الاسم بالإنجليزي</label><input type="text" id="fEn"></div>
-        <div><label class="f">القسم</label><select id="fCat"></select></div>
-        <div><label class="f">السعر (ر.ق) *</label><input type="number" id="fPrice" min="0" step="0.25"></div>
-        <div><label class="f">الوزن (جم)</label><input type="number" id="fWeight" min="0"></div>
-        <div><label class="f">الحالة</label><select id="fState"><option value="">—</option><option>طازج</option><option>مجمد</option></select></div>
-        <div><label class="f">المنشأ</label><input type="text" id="fOrigin"></div>
-        <div><label class="f">مُفعّل</label><select id="fActive"><option value="1">نعم</option><option value="0">لا</option></select></div>
+        <div><label class="f" for="fAr">الاسم بالعربي *</label><input type="text" id="fAr"></div>
+        <div><label class="f" for="fEn">الاسم بالإنجليزي</label><input type="text" id="fEn"></div>
+        <div><label class="f" for="fCat">القسم</label><select id="fCat"></select></div>
+        <div><label class="f" for="fPrice">السعر (ر.ق) *</label><input type="number" id="fPrice" min="0" step="0.25"></div>
+        <div><label class="f" for="fWeight">الوزن (جم)</label><input type="number" id="fWeight" min="0"></div>
+        <div><label class="f" for="fState">الحالة</label><select id="fState"><option value="">—</option><option>طازج</option><option>مجمد</option></select></div>
+        <div><label class="f" for="fOrigin">المنشأ</label><input type="text" id="fOrigin"></div>
+        <div><label class="f" for="fActive">مُفعّل</label><select id="fActive"><option value="1">نعم</option><option value="0">لا</option></select></div>
       </div>
     </div>
     <div class="modal-f">
@@ -357,6 +362,6 @@
 <script src="data.js?v=10"></script>
 <script src="qr.js?v=10"></script>
 <script src="sync.js?v=10"></script>
-<script src="app.js?v=10"></script>
+<script src="app.js?v=14"></script>
 </body>
 </html>

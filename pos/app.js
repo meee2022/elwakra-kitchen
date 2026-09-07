@@ -189,11 +189,20 @@ $('#nav').addEventListener('click', e => {
   $('#pageDescription').textContent = copy[1];
   $$('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + b.dataset.page));
   ({ invoices: renderInvoices, products: renderProducts, reports: renderReports, settings: fillSettings }[b.dataset.page] || (() => {}))();
+  measureAppbar();
 });
 
 /* ══════════════ نقطة البيع ══════════════ */
 let cart = [];
 let activeCat = 'meals';
+
+$('.pos-switch').addEventListener('click', e => {
+  const button = e.target.closest('[data-pos-view]');
+  if (!button) return;
+  $('.pos').classList.toggle('show-cart', button.dataset.posView === 'cart');
+  $$('[data-pos-view]').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+  $('.pos-switch').scrollIntoView({ block: 'start', behavior: 'instant' });
+});
 
 function renderCatTabs() {
   $('#catTabs').innerHTML = CATEGORIES
@@ -244,6 +253,7 @@ function addToCart(id) {
 
 function renderCart() {
   $('#cartCount').textContent = cart.reduce((n, item) => n + item.qty, 0);
+  $('#mobileCartCount').textContent = $('#cartCount').textContent;
   const box = $('#cartItems');
   if (!cart.length) { box.innerHTML = `<div class="empty cart-empty"><span class="empty-receipt" aria-hidden="true">≡</span><strong>ابدأ طلبًا جديدًا</strong><span>اختَر صنفًا من القائمة لإضافته هنا.</span></div>`; }
   else {
@@ -306,6 +316,7 @@ function updateTotals() {
   $('#rowDisc').hidden = !(t.discount > 0);
   $('#rowDel').hidden = !(t.delivery > 0);
   $('#tGrand').textContent = money(t.total) + ' ر.ق';
+  $('#mobileCartTotal').textContent = $('#tGrand').textContent;
   $('#btnSave').disabled = $('#btnSaveOnly').disabled = !cart.length;
 }
 
@@ -407,21 +418,17 @@ function invoiceHTML(inv, opts = {}) {
   const qrImg = qrFor(inv, thermal ? 2 : 3);
 
   const rows = inv.items.map((it, i) => {
-    const up = split(it.price), am = split(it.qty * it.price);
     return `<tr>
       <td class="c">${i + 1}</td>
       <td class="d">${esc(it.ar)}${it.en ? `<span class="en">${esc(it.en)}</span>` : ''}</td>
       <td class="c">${it.qty}</td>
-      <td class="c">${up.r}</td><td class="c sep">${String(up.d).padStart(2, '0')}</td>
-      <td class="c">${am.r}</td><td class="c sep">${String(am.d).padStart(2, '0')}</td>
+      <td class="c">${money(it.price)}</td>
+      <td class="c amount">${money(it.qty * it.price)}</td>
     </tr>`;
   }).join('');
 
-  const sumRow = (label, val, cls = 'sum') => {
-    const v = split(val);
-    return `<tr class="${cls}"><td colspan="5" class="lbl">${label}</td>
-      <td class="c">${v.r}</td><td class="c sep">${String(v.d).padStart(2, '0')}</td></tr>`;
-  };
+  const sumRow = (label, val, cls = 'sum') =>
+    `<tr class="${cls}"><td colspan="4" class="lbl">${label}</td><td class="c">${money(val)}</td></tr>`;
   const extras = [
     inv.discount > 0 ? sumRow('الخصم (Discount)', -inv.discount) : '',
     inv.delivery > 0 ? sumRow('التوصيل (Delivery)', inv.delivery) : '',
@@ -440,10 +447,9 @@ function invoiceHTML(inv, opts = {}) {
       <div class="inv-title">
         <div class="ar">${esc(o.nameAr)}</div>
         <div class="en">${esc(o.nameEn)}</div>
-        ${db.settings.sloganAr ? `<div class="sl">${esc(db.settings.sloganAr)}</div>` : ''}
       </div>
       <div class="inv-badge">
-        <div class="lab">رقم الفاتورة / Invoice No.</div>
+        <div class="lab">فاتورة / INVOICE</div>
         <div class="no">${inv.no}</div>
       </div>
     </div>
@@ -461,7 +467,7 @@ function invoiceHTML(inv, opts = {}) {
     </div>
 
     <div class="inv-cust">
-      <span><b>السيد / السادة</b> ${esc(inv.customer) || '—'}</span>
+      <span><b>العميل / الجهة · BILL TO</b> ${esc(inv.customer) || (inv.type === 'cash' ? 'عميل نقدي' : 'غير محدد')}</span>
       ${inv.phone ? `<span><b>الجوال</b> ${ltr(inv.phone)}</span>` : ''}
       ${inv.note ? `<span><b>ملاحظات</b> ${esc(inv.note)}</span>` : ''}
     </div>
@@ -469,22 +475,18 @@ function invoiceHTML(inv, opts = {}) {
     <table class="inv-t">
       <thead>
         <tr>
-          <th rowspan="2" style="width:6%">م</th>
-          <th rowspan="2">التفاصيل<small>DESCRIPTION</small></th>
-          <th rowspan="2" style="width:9%">الكمية<small>Qty.</small></th>
-          <th colspan="2" style="width:20%">سعر الوحدة<small>Unit Price</small></th>
-          <th colspan="2" style="width:20%">المبلغ<small>Amount</small></th>
-        </tr>
-        <tr>
-          <th>ريال<small>QRs.</small></th><th class="sep">درهم<small>Dhs.</small></th>
-          <th>ريال<small>QRs.</small></th><th class="sep">درهم<small>Dhs.</small></th>
+          <th style="width:6%">م</th>
+          <th>الصنف<small>ITEM DESCRIPTION</small></th>
+          <th style="width:10%">الكمية<small>QTY</small></th>
+          <th style="width:18%">سعر الوحدة<small>QAR</small></th>
+          <th style="width:20%">المبلغ<small>QAR</small></th>
         </tr>
       </thead>
       <tbody>
         ${rows}
         ${sumRow(`المجموع (Subtotal) — عدد الوحدات: ${qty}`, inv.subtotal)}
         ${extras}
-        ${sumRow('الإجمالي المستحق (TOTAL)', inv.total, 'total')}
+        ${sumRow('الإجمالي المستحق · ر.ق / TOTAL QAR', inv.total, 'total')}
       </tbody>
     </table>
 
@@ -508,8 +510,7 @@ function invoiceHTML(inv, opts = {}) {
     <div class="inv-foot">
       <div><b>تليفون (Tel):</b> ${ltr(o.tel)} &nbsp;·&nbsp; <b>جوال (Mob):</b> ${ltr(o.mobile)}
         &nbsp;·&nbsp; <b>ص.ب (P.O.Box):</b> ${ltr(o.poBox)} — ${esc(o.city)} / ${esc(o.cityEn)}</div>
-      <div class="l2">فاتورة إلكترونية صادرة آلياً من نظام نقاط البيع — معتمدة بدون توقيع أو ختم.
-        This is a computer-generated electronic invoice.</div>
+      <div class="l2">شكرًا لاختياركم مطابخ الجنوب <span lang="en" dir="ltr">Thank you for your order</span></div>
     </div>
   </div>
 </div>`;
@@ -550,7 +551,7 @@ function printDoc(bodyHTML, css, pageRule) {
 function printInvoice(inv) {
   const thermal = db.settings.printSize === 'thermal';
   printDoc(invoiceHTML(inv), INVOICE_CSS,
-    thermal ? 'size:72mm auto;margin:2mm' : 'size:A5;margin:6mm 7mm');
+    thermal ? 'size:auto;margin:2mm' : 'size:A5;margin:7mm');
 }
 
 /* تنسيقات الفاتورة مضمّنة نصياً — عشان الملف المصدَّر يفتح على أي جهاز
@@ -559,76 +560,84 @@ function printInvoice(inv) {
 const PRINT_FONT = `@import url('fonts/cairo.css');`;
 
 const INVOICE_CSS = PRINT_FONT + `
-.inv{width:148mm;padding:7mm 8mm;background:#fff;color:#151515;margin:0 auto;
-     font-family:'Cairo',"Segoe UI",Tahoma,Arial,sans-serif;font-size:9.5pt}
-.inv-wrap{position:relative}
-
-.inv-top{display:flex;align-items:center;gap:7px;border-bottom:2.5px solid #8B2231;padding-bottom:5px}
-.inv-logo{width:17mm;height:17mm;flex:none}
-.inv-logo svg,.inv-logo img{width:100%;height:100%;object-fit:contain;display:block}
-.inv-title{flex:1;text-align:center;min-width:0}
-.inv-title .ar{font-size:14.5pt;font-weight:800;line-height:1.2;white-space:nowrap}
-.inv-title .en{font-size:9pt;font-weight:700;letter-spacing:.4px;color:#333;white-space:nowrap}
-.inv-title .sl{font-size:8pt;color:#8B2231;font-weight:700;margin-top:1px}
-.inv-badge{flex:none;text-align:center;border:1.5px solid #8B2231;border-radius:4px;padding:2px 6px;min-width:24mm}
-.inv-badge .lab{font-size:6.5pt;color:#8B2231;font-weight:700;line-height:1.3}
-.inv-badge .no{font-size:17pt;font-weight:800;color:#C00;line-height:1.15;direction:ltr}
-
-.inv-strip{display:flex;border:1px solid #c4c4c4;border-radius:3px;overflow:hidden;margin-top:4px}
-.inv-strip div{flex:1;padding:2px 6px;font-size:8.5pt;border-left:1px solid #dcdcdc;min-width:0}
-.inv-strip div:last-child{border-left:0}
-.inv-strip i{font-style:normal;color:#777;font-weight:700;font-size:7pt;display:block;line-height:1.3}
-
-.inv-cust{border:1px solid #c4c4c4;border-radius:3px;padding:3px 7px;font-size:9.5pt;
-          display:flex;gap:18px;flex-wrap:wrap;margin:4px 0}
-.inv-cust b{color:#777;font-weight:700;font-size:7.5pt;display:block;line-height:1.3}
-
-table.inv-t{width:100%;border-collapse:collapse;border:1.2px solid #555;margin-top:2px}
-table.inv-t th,table.inv-t td{border:1px solid #b8b8b8;padding:2.5px 5px;font-size:10pt}
-table.inv-t th{background:#F2E8E6;text-align:center;font-size:8pt;line-height:1.15;font-weight:700;color:#5A1720;border-color:#9a8c88}
-table.inv-t th small{display:block;font-weight:400;font-size:7pt;color:#8a6a70}
-table.inv-t td.d{text-align:right;line-height:1.3}
-table.inv-t td.c{text-align:center;direction:ltr}
-table.inv-t td.sep,table.inv-t th.sep{border-left-width:1.2px;border-left-color:#555}
-table.inv-t td .en{font-size:7.5pt;color:#666;direction:ltr;float:left;padding-top:1px}
-table.inv-t td.lbl{text-align:left;font-weight:700}
-table.inv-t tr.sum td{background:#f6f6f6;font-size:10pt;font-weight:700}
-table.inv-t tr.total td{background:#E9DDDA;font-size:12pt;font-weight:800;color:#5A1720;border-color:#555}
-
-.inv-tafqeet{font-size:9.5pt;margin-top:4px;border:1px solid #555;border-radius:3px;padding:3px 7px;font-weight:700;background:#fafafa}
-
-.inv-bottom{display:flex;gap:10px;align-items:stretch;margin-top:7px;min-width:0}
-.inv-verify{flex:0 1 auto;min-width:0;display:flex;gap:6px;align-items:center;border:1px dashed #999;border-radius:3px;padding:4px 6px}
-.inv-verify img{width:19mm;height:19mm;display:block}
-.inv-verify .vt{font-size:6.8pt;line-height:1.75}
-.inv-verify code{font-family:Consolas,monospace;font-size:6.8pt;word-break:break-all}
-.inv-signs{flex:1 1 0;min-width:0;display:flex;gap:12px;align-items:flex-end}
-.inv-signs div{flex:1;min-width:0;border-top:1px dotted #444;padding-top:2px;text-align:center;font-size:8pt;line-height:1.35}
-
-.inv-foot{margin-top:7px;border-top:1.5px solid #8B2231;padding-top:3px;text-align:center;font-size:8pt;line-height:1.6}
-.inv-foot b{color:#666}
-.inv-foot .l2{font-size:7pt;color:#666}
-.inv-void{position:absolute;inset:0;display:grid;place-items:center;font-size:46pt;
-          color:rgba(190,0,0,.15);font-weight:800;transform:rotate(-18deg);pointer-events:none;z-index:2}
-
-/* رول حراري 80 مم */
-.inv.thermal{width:72mm;padding:3mm 2mm;font-size:8pt}
-.inv.thermal .inv-top{flex-direction:column;gap:3px;text-align:center}
-.inv.thermal .inv-logo{width:14mm;height:14mm}
-.inv.thermal .inv-title .ar{font-size:11pt;white-space:normal}
-.inv.thermal .inv-title .en{font-size:7.5pt}
-.inv.thermal .inv-badge{min-width:0;padding:1px 6px}
-.inv.thermal .inv-badge .no{font-size:12pt}
-.inv.thermal .inv-strip{flex-direction:column}
-.inv.thermal .inv-strip div{border-left:0;border-bottom:1px solid #dcdcdc}
-.inv.thermal .inv-cust{flex-direction:column;gap:2px}
-.inv.thermal table.inv-t th,.inv.thermal table.inv-t td{font-size:7.5pt;padding:1.5px 2px}
-.inv.thermal table.inv-t tr.total td{font-size:9pt}
-.inv.thermal .inv-tafqeet{font-size:7.5pt}
+.inv-wrap{position:relative;max-width:100%}
+.inv,.inv *{box-sizing:border-box}
+.inv{width:100%;max-width:148mm;padding:7mm;background:#fff;color:#25201d;margin:0 auto;
+  font-family:'Cairo',"Segoe UI",Tahoma,Arial,sans-serif;font-size:9pt;line-height:1.6;direction:rtl}
+.inv-top{display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:2px solid #913f2c;break-inside:avoid}
+.inv-logo{width:15mm;height:15mm;flex:none}
+.inv-logo svg,.inv-logo img{display:block;width:100%;height:100%;object-fit:contain}
+.inv-title{flex:1;min-width:0;text-align:right}
+.inv-title .ar{font-size:13pt;font-weight:800;line-height:1.65;overflow-wrap:anywhere}
+.inv-title .en{font-size:7pt;font-weight:500;color:#655d58;line-height:1.6;direction:ltr;text-align:right}
+.inv-badge{flex:none;text-align:left;max-width:27mm;overflow-wrap:anywhere}
+.inv-badge .lab{font-size:6.5pt;font-weight:600;color:#655d58}
+.inv-badge .no{font-size:20pt;line-height:1.4;font-weight:800;color:#913f2c;direction:ltr;font-variant-numeric:tabular-nums}
+.inv-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px;break-inside:avoid}
+.inv-strip div{font-size:8pt;min-width:0;overflow-wrap:anywhere}
+.inv-strip i{display:block;font-size:6.5pt;font-weight:600;font-style:normal;color:#776c64;margin-bottom:2px}
+.inv-strip+.inv-strip{margin-top:8px;padding-top:8px;border-top:1px solid #e3dcd6}
+.inv-cust{display:flex;flex-wrap:wrap;gap:8px 22px;padding:7px 10px;margin:9px 0;background:#f7f4f1;border:1px solid #e8e1dc;border-radius:4px;font-size:9pt;break-inside:avoid}
+.inv-cust span{min-width:0;overflow-wrap:anywhere}
+.inv-cust b{display:block;font-size:6.5pt;font-weight:600;color:#776c64;margin-bottom:3px}
+table.inv-t{width:100%;border-collapse:collapse;table-layout:fixed;margin:0;border:0}
+table.inv-t th,table.inv-t td{position:static;box-shadow:none;border-radius:0;border:0;border-bottom:1px solid #e6e0db;padding:5px 5px;font-size:9pt;vertical-align:middle}
+table.inv-t th{background:#f0eae5;color:#514139;font-size:7pt;font-weight:700;text-align:center;white-space:normal;line-height:1.5}
+table.inv-t th small{display:block;font-size:6pt;font-weight:500;color:#74675e}
+table.inv-t td.d{text-align:right;line-height:1.65;font-weight:600;overflow-wrap:anywhere}
+table.inv-t td.c{text-align:center;direction:ltr;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+table.inv-t td.amount{font-weight:700}
+table.inv-t td .en{display:block;float:none;font-size:6.8pt;font-weight:400;color:#776c64;direction:ltr;text-align:right;line-height:1.5;margin-top:2px}
+table.inv-t tbody tr td{background:#fff}
+table.inv-t tr.sum td{background:#fff;font-size:8pt;padding-top:6px;padding-bottom:6px}
+table.inv-t td.lbl{text-align:right;font-weight:600}
+table.inv-t tr.total td{background:#eee4dd;color:#713520;border-top:1px solid #cfb9aa;border-bottom:1px solid #cfb9aa;font-size:10pt;font-weight:800;padding:10px 5px}
+table.inv-t thead{display:table-header-group}
+table.inv-t tr{break-inside:avoid;page-break-inside:avoid}
+.inv-tafqeet{font-size:8pt;color:#514139;padding:7px 0;margin-top:3px;text-align:right;break-inside:avoid}
+.inv-bottom{display:flex;align-items:flex-end;gap:18px;margin-top:10px;break-inside:avoid;min-width:0}
+.inv-verify{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.inv-verify img{width:18mm;height:18mm;flex:none;display:block}
+.inv-verify .vt{min-width:0;font-size:6pt;color:#655d58;line-height:1.9}
+.inv-verify .vt b{color:#25201d;font-size:7pt}
+.inv-verify code{font-family:Consolas,monospace;font-size:6pt;overflow-wrap:anywhere}
+.inv-signs{flex:1;display:flex;gap:12px;min-width:0}
+.inv-signs div{flex:1;min-width:0;border-top:1px solid #aaa098;padding-top:5px;text-align:center;font-size:6.5pt;color:#655d58;line-height:1.7}
+.inv-foot{border-top:1px solid #d8cbc1;margin-top:10px;padding-top:6px;text-align:center;font-size:6.8pt;line-height:1.9;color:#655d58;break-inside:avoid;overflow-wrap:anywhere}
+.inv-foot b{font-weight:600}
+.inv-foot .l2{font-size:7pt;margin-top:7px;color:#713520;font-weight:600}
+.inv-foot .l2 span{display:block;font-size:6pt;font-weight:400;color:#776c64}
+.inv-void{position:absolute;inset:0;display:grid;place-items:center;font-size:46pt;color:rgba(190,0,0,.15);font-weight:800;transform:rotate(-18deg);pointer-events:none;z-index:2}
+.inv.thermal{max-width:72mm;padding:2mm;font-size:8pt;color:#111}
+.inv.thermal .inv-top{flex-wrap:wrap;gap:6px;padding-bottom:8px}
+.inv.thermal .inv-logo{width:12mm;height:12mm}
+.inv.thermal .inv-title .ar{font-size:10pt}
+.inv.thermal .inv-title .en{font-size:6pt}
+.inv.thermal .inv-badge{max-width:none;flex-basis:100%;display:flex;align-items:center;justify-content:space-between}
+.inv.thermal .inv-badge .no{font-size:13pt}
+.inv.thermal .inv-strip{gap:6px;margin-top:7px}
+.inv.thermal .inv-strip div{font-size:6.5pt}
+.inv.thermal .inv-strip i{font-size:5.5pt}
+.inv.thermal .inv-cust{font-size:8pt;padding:5px;margin:8px 0;gap:5px}
+.inv.thermal table.inv-t th,.inv.thermal table.inv-t td{font-size:7pt;padding:5px 2px}
+.inv.thermal table.inv-t th small,.inv.thermal table.inv-t td .en{font-size:5.5pt}
+.inv.thermal table.inv-t tr.total td{font-size:8pt}
+.inv.thermal .inv-tafqeet{font-size:7pt}
 .inv.thermal .inv-signs{display:none}
-.inv.thermal .inv-bottom{justify-content:center}
-.inv.thermal .inv-verify img{width:16mm;height:16mm}
-.inv.thermal .inv-foot{font-size:6.5pt}
+.inv.thermal .inv-bottom{margin-top:8px}
+.inv.thermal .inv-verify img{width:18mm;height:18mm}
+.inv.thermal .inv-foot{font-size:6pt}
+@media screen and (max-width:480px){
+  .inv:not(.thermal){padding:12px}
+  .inv:not(.thermal) .inv-top{flex-wrap:wrap;gap:8px}
+  .inv:not(.thermal) .inv-title .ar{font-size:11pt}
+  .inv:not(.thermal) .inv-badge{max-width:none;flex-basis:100%;display:flex;align-items:center;justify-content:space-between}
+  .inv:not(.thermal) .inv-strip{gap:6px}
+  .inv:not(.thermal) table.inv-t th,.inv:not(.thermal) table.inv-t td{font-size:8pt;padding:6px 3px}
+  .inv:not(.thermal) .inv-bottom{flex-wrap:wrap}
+  .inv:not(.thermal) .inv-signs{flex-basis:100%;margin-top:20px}
+}
+@media print{.inv{max-width:none;padding:0}.inv.thermal{max-width:72mm;padding:0}}
 `;
 
 const REPORT_CSS = PRINT_FONT + `
@@ -668,7 +677,7 @@ function downloadInvoiceFile(inv) {
 body{background:#eee;margin:0;padding:18px;font-family:'Cairo',"Segoe UI",Tahoma,sans-serif}
 .inv{box-shadow:0 2px 12px rgba(0,0,0,.15)}
 ${INVOICE_CSS}
-@media print{body{background:#fff;padding:0}.inv{box-shadow:none}@page{size:A5;margin:0}}
+@media print{body{background:#fff;padding:0}.inv{box-shadow:none}@page{size:A5;margin:7mm}}
 </style></head><body>${invoiceHTML(inv, { size: 'a5' })}</body></html>`;
   downloadBlob(doc, `فاتورة-${inv.no}.html`, 'text/html;charset=utf-8');
 }
@@ -729,7 +738,13 @@ function renderInvoices() {
 
   $('#invCount').textContent = `${list.length} فاتورة · إجمالي ${money(list.filter(v => v.status === 'active').reduce((s, v) => s + v.total, 0))} ر.ق`;
 }
-const stat = (lbl, val, sm, cls) => `<div class="stat ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sm">${sm || '&nbsp;'}</div></div>`;
+const statValue = value => {
+  const text = String(value);
+  return text.endsWith(' ر.ق')
+    ? `<bdi class="stat-number" dir="ltr">${esc(text.slice(0, -4))}</bdi><span class="stat-currency">ر.ق</span>`
+    : `<bdi class="stat-number" dir="ltr">${esc(text)}</bdi>`;
+};
+const stat = (lbl, val, sm, cls) => `<div class="stat ${cls}"><div class="lbl">${lbl}</div><div class="val">${statValue(val)}</div><div class="sm">${sm || '&nbsp;'}</div></div>`;
 function statusBadge(v) {
   if (v.status === 'void') return '<span class="badge b-void">ملغاة</span>';
   if (v.type === 'cash') return '<span class="badge b-cash">نقداً</span>';
@@ -792,14 +807,13 @@ function registerHTML(list, from, to) {
       <div><b>السجل التجاري:</b> ${ltr(o.crNumber)}</div>
       <div><b>رقم قيد المنشأة:</b> ${ltr(o.entityNumber)}</div>
       <div><b>رقم التسجيل الضريبي:</b> ${ltr(o.taxNumber)}</div>
-      <div><b>المالك:</b> ${esc(o.ownerName)}</div>
       <div><b>النشاط:</b> ${esc(o.activity || '')}</div>
       <div><b>الهاتف:</b> ${ltr(o.tel)}</div>
       <div><b>العنوان:</b> ص.ب ${ltr(o.poBox)} — ${esc(o.city)}</div>
     </div>
     <table>
       <thead><tr>
-        <th>م</th><th>رقم الفاتورة</th><th>التاريخ</th><th>الوقت</th><th>العميل</th>
+        <th>م</th><th>رقم الفاتورة</th><th>التاريخ</th><th>الوقت</th><th>العميل / الجهة</th>
         <th>عدد الأصناف</th><th>المجموع</th><th>الخصم</th><th>التوصيل</th>
         <th>الإجمالي (ر.ق)</th><th>نوع الدفع</th><th>الحالة</th><th>بصمة التحقق</th>
       </tr></thead>
@@ -1241,6 +1255,10 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModals(
 function measureAppbar() {
   const bar = $('.appbar');
   if (bar) document.documentElement.style.setProperty('--appbar-h', bar.offsetHeight + 'px');
+  const pos = $('.pos');
+  if (pos.getClientRects().length) {
+    document.documentElement.style.setProperty('--pos-start', Math.ceil(pos.getBoundingClientRect().top + window.scrollY) + 'px');
+  }
 }
 
 function applyBranding() {
@@ -1265,6 +1283,9 @@ function tick() {
   tick(); setInterval(tick, 20000);
   measureAppbar();
   addEventListener('resize', measureAppbar);
+  const layoutObserver = new ResizeObserver(measureAppbar);
+  layoutObserver.observe($('.appbar'));
+  layoutObserver.observe($('.workspace-heading'));
   Sync.start();
 
   // ضمان كتابة أي تعديل معلّق قبل إغلاق النافذة
