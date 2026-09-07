@@ -1,0 +1,18 @@
+# لا تُنشر على الويب
+node_modules
+convex
+.claude
+package.json
+package-lock.json
+
+# مستندات وأدوات محلية
+*.md
+!README.md
+pos/*.md
+pos/*.bat
+pos/invoice-preview.html
+مستندات-المنشأة
+
+# أسرار
+.env
+.env.local
