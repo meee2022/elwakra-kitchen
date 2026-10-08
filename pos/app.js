@@ -210,7 +210,7 @@ let activeCat = 'meals';
 const DRAFT_KEY = 'stdk_locked_draft';
 addEventListener('auth-locked', event => {
   if (!cart.length || !event.detail?.username) return;
-  const fields = Object.fromEntries(['cName','cPhone','payType','invDate','discount','delivery','invNote'].map(id => [id,document.getElementById(id).value]));
+  const fields = Object.fromEntries(['cName','cPhone','invDate','discount','delivery','invNote'].map(id => [id,document.getElementById(id).value]));
   try { sessionStorage.setItem(DRAFT_KEY,JSON.stringify({username:event.detail.username,cart,fields})); } catch {}
 });
 function restoreLockedDraft() {
@@ -218,7 +218,7 @@ function restoreLockedDraft() {
     const draft=JSON.parse(sessionStorage.getItem(DRAFT_KEY)||'null');
     if(draft?.username!==Auth.profile().username || !Array.isArray(draft.cart)) return;
     cart=draft.cart;
-    for(const id of ['cName','cPhone','payType','invDate','discount','delivery','invNote']) if(draft.fields[id]!=null)document.getElementById(id).value=draft.fields[id];
+    for(const id of ['cName','cPhone','invDate','discount','delivery','invNote']) if(draft.fields[id]!=null)document.getElementById(id).value=draft.fields[id];
     renderCart();sessionStorage.removeItem(DRAFT_KEY);
   }catch{}
 }
@@ -358,7 +358,6 @@ function clearCart() {
   cart = [];
   ['#cName', '#cPhone', '#invNote'].forEach(s => $(s).value = '');
   $('#discount').value = $('#delivery').value = 0;
-  $('#payType').value = 'cash';
   $('#invDate').value = todayISO();
   renderCart();
   $('#nextNoLabel').textContent = t('رقم الفاتورة القادم: ') + db.settings.nextInvoiceNo;
@@ -366,13 +365,14 @@ function clearCart() {
 $('#btnClear').addEventListener('click', () => { if (!cart.length || confirm(t('إفراغ الفاتورة الحالية؟'))) clearCart(); });
 
 let savingInvoice = false;   // blocks a second click from issuing a duplicate while the first is being written
-async function saveInvoice(print) {
+async function saveInvoice(print, type) {
   if (!Auth.active()) return toast(I18n.t('سجّل الدخول أولًا'), 'err');
   if (!cart.length || savingInvoice) return;
   savingInvoice = true;
-  try { await writeInvoice(print); } finally { savingInvoice = false; }
+  try { await writeInvoice(print, type); } finally { savingInvoice = false; }
 }
-async function writeInvoice(print) {
+async function writeInvoice(print, type) {
+  const paidNow = type !== 'credit';   // card and cash settle on the spot
   const t = currentTotals();
   const s = db.settings;
   const now = new Date();
@@ -383,9 +383,9 @@ async function writeInvoice(print) {
     createdAt: now.toISOString(),
     customer: $('#cName').value.trim(),
     phone: $('#cPhone').value.trim(),
-    type: $('#payType').value,
-    paid: $('#payType').value === 'cash',
-    paidAt: $('#payType').value === 'cash' ? now.toISOString() : null,
+    type,
+    paid: paidNow,
+    paidAt: paidNow ? now.toISOString() : null,
     items: cart.map(l => ({ ar: l.ar, en: l.en, qty: l.qty, price: l.price })),
     ...t,
     note: $('#invNote').value.trim(),
@@ -416,8 +416,24 @@ async function writeInvoice(print) {
   toast(I18n.t2('تم حفظ الفاتورة رقم {0} — {1} ر.ق', inv.no, money(inv.total)), 'ok');
   if (print) printInvoice(inv);
 }
-$('#btnSave').addEventListener('click', () => saveInvoice(true));
-$('#btnSaveOnly').addEventListener('click', () => saveInvoice(false));
+
+/* The payment method is asked for on every sale, so the cash and card totals can be trusted. */
+let payPrint = false;
+function askPayment(print) {
+  if (!cart.length || savingInvoice) return;
+  payPrint = print;
+  $('#payTotal').textContent = $('#tGrand').textContent;
+  $('#payModal').classList.add('open');
+  $('#payModal [data-pay="card"]').focus();   // most sales are by card: Enter confirms it
+}
+$('#payModal').addEventListener('click', e => {
+  const btn = e.target.closest('[data-pay]');
+  if (!btn) return;
+  closeModals();
+  saveInvoice(payPrint, btn.dataset.pay);
+});
+$('#btnSave').addEventListener('click', () => askPayment(true));
+$('#btnSaveOnly').addEventListener('click', () => askPayment(false));
 
 /* ══════════════ بناء الفاتورة الإلكترونية ══════════════ */
 const _qrCache = new Map();
@@ -437,7 +453,6 @@ function qrPayload(inv) {
     o.nameAr,
     o.nameEn,
     'CR: ' + (o.crNumber || '-'),
-    'TAX: ' + (o.taxNumber || '-'),
     'INV: ' + inv.no,
     'DATE: ' + inv.date + ' ' + inv.time,
     'TOTAL: ' + money(inv.total) + ' QAR',
@@ -501,19 +516,13 @@ function invoiceHTML(inv, opts = {}) {
     </div>
 
     <div class="inv-strip">
-      <div><i>النوع</i>فاتورة ${inv.type === 'cash' ? 'نقداً' : 'على الحساب'} — إلكترونية</div>
+      <div><i>النوع</i>فاتورة ${inv.type === 'card' ? 'بالبطاقة' : inv.type === 'cash' ? 'نقداً' : 'على الحساب'} — إلكترونية</div>
       <div><i>التاريخ</i>${ltr(fmtDate(inv.date))}</div>
       <div><i>الوقت</i>${ltr(inv.time)}</div>
     </div>
 
-    <div class="inv-strip">
-      <div><i>السجل التجاري</i>${ltr(o.crNumber)}</div>
-      <div><i>رقم قيد المنشأة</i>${ltr(o.entityNumber)}</div>
-      <div><i>التسجيل الضريبي</i>${ltr(o.taxNumber)}</div>
-    </div>
-
     <div class="inv-cust">
-      <span><b>العميل / الجهة · BILL TO</b> ${esc(inv.customer) || (inv.type === 'cash' ? 'عميل نقدي' : 'غير محدد')}</span>
+      <span><b>العميل / الجهة · BILL TO</b> ${esc(inv.customer) || (inv.type === 'card' ? 'عميل' : inv.type === 'cash' ? 'عميل نقدي' : 'غير محدد')}</span>
       ${inv.phone ? `<span><b>الجوال</b> ${ltr(inv.phone)}</span>` : ''}
       ${inv.note ? `<span><b>ملاحظات</b> ${esc(inv.note)}</span>` : ''}
     </div>
@@ -554,8 +563,8 @@ function invoiceHTML(inv, opts = {}) {
     </div>
 
     <div class="inv-foot">
-      <div><b>تليفون (Tel):</b> ${ltr(o.tel)} &nbsp;·&nbsp; <b>جوال (Mob):</b> ${ltr(o.mobile)}
-        &nbsp;·&nbsp; <b>ص.ب (P.O.Box):</b> ${ltr(o.poBox)} — ${esc(o.city)} / ${esc(o.cityEn)}</div>
+      <div><b>السجل التجاري (C.R.):</b> ${ltr(o.crNumber)} &nbsp;·&nbsp; <b>تليفون (Tel):</b> ${ltr(o.tel)} &nbsp;·&nbsp; <b>جوال (Mob):</b> ${ltr(o.mobile)}</div>
+      <div><b>ص.ب (P.O.Box):</b> ${ltr(o.poBox)} — ${esc(o.city)} / ${esc(o.cityEn)}</div>
       <div class="l2">شكرًا لاختياركم مطابخ الجنوب <span lang="en" dir="ltr">Thank you for your order</span></div>
     </div>
   </div>
@@ -700,10 +709,10 @@ const REPORT_CSS = PRINT_FONT + `
 .reg tbody tr:nth-child(even) td{background:#fafafa}
 .reg .rfoot{margin-top:10px;font-size:8.5pt;display:flex;justify-content:space-between}
 .reg .rh{font-size:11pt;margin:12px 0 4px;padding-bottom:2px;border-bottom:1.5px solid #8B2231;color:#5A1720}
-.reg .rboxes{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:6px}
+.reg .rboxes{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px}
 .reg .rbox{border:1px solid #999;border-radius:4px;padding:4px 6px;text-align:center}
 .reg .rbox .l{font-size:7.5pt;color:#555;font-weight:700}
-.reg .rbox .v{font-size:12pt;font-weight:800;line-height:1.2}
+.reg .rbox .v{font-size:10.5pt;font-weight:800;line-height:1.2}
 .reg .rbox .s{font-size:7pt;color:#666;min-height:9pt}
 .reg .rnote{font-size:8pt;color:#555;margin-top:3px;line-height:1.5}
 .reg thead{display:table-header-group}
@@ -744,6 +753,7 @@ function filteredInvoices() {
     if (q && !(String(v.no).includes(q) || (v.customer || '').toLowerCase().includes(q) || (v.phone || '').includes(q))) return false;
     if (from && v.date < from) return false;
     if (to && v.date > to) return false;
+    if (f === 'card') return v.status === 'active' && v.type === 'card';
     if (f === 'cash') return v.status === 'active' && v.type === 'cash';
     if (f === 'credit') return v.status === 'active' && v.type === 'credit' && !v.paid;
     if (f === 'paid') return v.status === 'active' && v.type === 'credit' && v.paid;
@@ -761,6 +771,7 @@ function renderInvoices() {
 
   $('#invStats').innerHTML = `
     ${stat(t('مبيعات اليوم'), money(tSales.reduce((s, v) => s + v.total, 0)) + ' ' + t('ر.ق'), tSales.length + ' ' + t('فاتورة'), 'g')}
+    ${stat(t('بطاقة اليوم'), money(tSales.filter(v => v.type === 'card').reduce((s, v) => s + v.total, 0)) + ' ' + t('ر.ق'), '', '')}
     ${stat(t('نقداً اليوم'), money(tSales.filter(v => v.type === 'cash').reduce((s, v) => s + v.total, 0)) + ' ' + t('ر.ق'), '', '')}
     ${stat(t('مستحقات آجلة'), money(unpaid.reduce((s, v) => s + v.total, 0)) + ' ' + t('ر.ق'), unpaid.length + ' ' + t('فاتورة غير محصّلة'), 'w')}
     ${stat(t('إجمالي الفواتير'), act.length, t('منذ بداية التشغيل'), 'd')}`;
@@ -796,6 +807,7 @@ const statValue = value => {
 const stat = (lbl, val, sm, cls) => `<div class="stat ${cls}"><div class="lbl">${lbl}</div><div class="val">${statValue(val)}</div><div class="sm">${sm || '&nbsp;'}</div></div>`;
 function statusBadge(v) {
   if (v.status === 'void') return `<span class="badge b-void">${t('ملغاة')}</span>`;
+  if (v.type === 'card') return `<span class="badge b-card">${t('بطاقة')}</span>`;
   if (v.type === 'cash') return `<span class="badge b-cash">${t('نقداً')}</span>`;
   return v.paid ? `<span class="badge b-paid">${t('آجل — محصّل')}</span>`
                 : `<span class="badge b-credit">${t('على الحساب')}</span>`;
@@ -872,7 +884,7 @@ function registerHTML(list, from, to) {
         <td class="d">${esc(v.customer) || '—'}</td><td>${v.items.length}</td>
         <td>${money(v.subtotal)}</td><td>${money(v.discount)}</td><td>${money(v.delivery)}</td>
         <td><b>${money(v.total)}</b></td>
-        <td>${v.type === 'cash' ? 'نقداً' : (v.paid ? 'آجل — محصّل' : 'على الحساب')}</td>
+        <td>${v.type === 'card' ? 'بطاقة' : v.type === 'cash' ? 'نقداً' : (v.paid ? 'آجل — محصّل' : 'على الحساب')}</td>
         <td>${v.status === 'void' ? 'ملغاة' : 'سارية'}</td><td>${ltr(v.hash || '')}</td>
       </tr>`).join('')}</tbody>
       <tfoot><tr>
@@ -906,7 +918,7 @@ $('#btnExportCsv').addEventListener('click', () => {
   const rows = list.map(v => [v.no, v.date, v.time, v.customer, v.phone,
     v.items.map(i => `${i.ar} ×${i.qty}`).join(' + '),
     money(v.subtotal), money(v.discount), money(v.delivery), money(v.vat || 0), money(v.total),
-    t(v.type === 'cash' ? 'نقداً' : (v.paid ? 'آجل محصّل' : 'على الحساب')),
+    t(v.type === 'card' ? 'بطاقة' : v.type === 'cash' ? 'نقداً' : (v.paid ? 'آجل محصّل' : 'على الحساب')),
     t(v.status === 'void' ? 'ملغاة' : 'سارية'), v.uid, v.hash].map(q).join(','));
   downloadBlob('﻿sep=,\r\n' + [head.map(q).join(','), ...rows].join('\r\n'),
     `فواتير-${todayISO()}.csv`, 'text/csv;charset=utf-8');
@@ -991,9 +1003,9 @@ function reportData(from, to) {
   const items = {}, cats = {}, days = {};
   let units = 0;
   list.forEach(v => {
-    const d = (days[v.date] = days[v.date] || { n: 0, cash: 0, credit: 0, units: 0, total: 0 });
+    const d = (days[v.date] = days[v.date] || { n: 0, card: 0, cash: 0, credit: 0, units: 0, total: 0 });
     d.n++; d.total += v.total;
-    if (v.type === 'cash') d.cash += v.total; else d.credit += v.total;
+    d[v.type === 'card' ? 'card' : v.type === 'cash' ? 'cash' : 'credit'] += v.total;
     v.items.forEach(it => {
       const val = it.qty * it.price, c = catOf(it.ar);
       units += it.qty; d.units += it.qty;
@@ -1009,6 +1021,7 @@ function reportData(from, to) {
   const itemsValue = itemsSorted.reduce((s, [, e]) => s + e.val, 0);
   return {
     list, total, units, items: itemsSorted, itemsValue, cats, days,
+    card: list.filter(v => v.type === 'card').reduce((s, v) => s + v.total, 0),
     cash: list.filter(v => v.type === 'cash').reduce((s, v) => s + v.total, 0),
     credit: list.filter(v => v.type === 'credit').reduce((s, v) => s + v.total, 0),
     unpaid: list.filter(v => v.type === 'credit' && !v.paid).reduce((s, v) => s + v.total, 0),
@@ -1030,6 +1043,7 @@ function renderReports() {
   $('#rStats').innerHTML = `
     ${stat(t('إجمالي المبيعات'), money(r.total) + ' ' + t('ر.ق'), r.list.length + ' ' + t('فاتورة'), '')}
     ${stat(t('عدد الوجبات المباعة'), r.units, t('إجمالي الوحدات في الفترة'), 'g')}
+    ${stat(t('بطاقة'), money(r.card) + ' ' + t('ر.ق'), '', 'g')}
     ${stat(t('نقداً'), money(r.cash) + ' ' + t('ر.ق'), '', 'g')}
     ${stat(t('على الحساب'), money(r.credit) + ' ' + t('ر.ق'), t('غير محصّل: ') + money(r.unpaid) + ' ' + t('ر.ق'), 'w')}
     ${stat(t('متوسط الفاتورة'), money(r.list.length ? r.total / r.list.length : 0) + ' ' + t('ر.ق'),
@@ -1065,8 +1079,8 @@ function renderReports() {
   const dayRows = Object.entries(r.days).sort((a, b) => b[0].localeCompare(a[0]));
   $('#dailyRows').innerHTML = dayRows.length
     ? dayRows.map(([d, v]) => `<tr><td class="num">${fmtDate(d)}</td><td class="num">${v.n}</td>
-        <td class="num">${money(v.cash)}</td><td class="num">${money(v.credit)}</td><td class="num"><b>${money(v.total)}</b></td></tr>`).join('')
-    : `<tr><td colspan="5"><div class="empty">${t('لا توجد بيانات')}</div></td></tr>`;
+        <td class="num">${money(v.card)}</td><td class="num">${money(v.cash)}</td><td class="num">${money(v.credit)}</td><td class="num"><b>${money(v.total)}</b></td></tr>`).join('')
+    : `<tr><td colspan="6"><div class="empty">${t('لا توجد بيانات')}</div></td></tr>`;
 }
 
 /** تقرير مبيعات قابل للطباعة — الكميات المباعة والأصناف والأقسام والأيام */
@@ -1081,6 +1095,7 @@ function reportHTML(from, to) {
     <div class="rboxes">
       ${box('إجمالي المبيعات', money(r.total) + ' ر.ق', r.list.length + ' فاتورة')}
       ${box('عدد الوجبات المباعة', r.units, 'وحدة')}
+      ${box('بطاقة', money(r.card) + ' ر.ق', '')}
       ${box('نقداً', money(r.cash) + ' ر.ق', '')}
       ${box('على الحساب', money(r.credit) + ' ر.ق', 'غير محصّل: ' + money(r.unpaid))}
       ${box('متوسط الفاتورة', money(r.list.length ? r.total / r.list.length : 0) + ' ر.ق', '')}
@@ -1108,11 +1123,11 @@ function reportHTML(from, to) {
       (إجمالي الخصومات في الفترة: ${money(r.discounts)} ر.ق).</div>
 
     <h3 class="rh">المبيعات اليومية</h3>
-    <table><thead><tr><th>التاريخ</th><th>عدد الفواتير</th><th>الوجبات</th><th>نقداً</th><th>آجل</th><th>الإجمالي (ر.ق)</th></tr></thead>
+    <table><thead><tr><th>التاريخ</th><th>عدد الفواتير</th><th>الوجبات</th><th>بطاقة</th><th>نقداً</th><th>آجل</th><th>الإجمالي (ر.ق)</th></tr></thead>
       <tbody>${Object.entries(r.days).sort((a, b) => a[0].localeCompare(b[0])).map(([d, v]) =>
-        `<tr><td>${fmtDate(d)}</td><td>${v.n}</td><td>${v.units}</td><td>${money(v.cash)}</td>
+        `<tr><td>${fmtDate(d)}</td><td>${v.n}</td><td>${v.units}</td><td>${money(v.card)}</td><td>${money(v.cash)}</td>
           <td>${money(v.credit)}</td><td><b>${money(v.total)}</b></td></tr>`).join('')
-        || '<tr><td colspan="6">لا توجد بيانات</td></tr>'}</tbody></table>
+        || '<tr><td colspan="7">لا توجد بيانات</td></tr>'}</tbody></table>
 
     <div class="rfoot">
       <div>تاريخ إصدار التقرير: ${fmtDate(todayISO())} — ${new Date().toTimeString().slice(0, 5)}</div>

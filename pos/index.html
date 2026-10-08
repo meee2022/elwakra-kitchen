@@ -9,8 +9,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="app.css?v=22">
-<link rel="stylesheet" href="auth.css?v=22">
+<link rel="stylesheet" href="app.css?v=23">
+<link rel="stylesheet" href="auth.css?v=23">
 </head>
 <body>
 
@@ -80,12 +80,7 @@
         <div class="cart-items" id="cartItems"></div>
         <div class="card-b cart-fields" style="padding-bottom:8px">
           <div><label class="f" for="cName" data-i18n="اسم العميل / الجهة">اسم العميل / الجهة</label><input type="text" id="cName" placeholder="اسم الشخص أو الشركة أو الوزارة (اختياري)" data-i18n-ph="اسم الشخص أو الشركة أو الوزارة (اختياري)"></div>
-          <div class="grid2" style="margin-top:10px">
-            <div><label class="f" for="payType" data-i18n="نوع الدفع">نوع الدفع</label>
-              <select id="payType"><option value="cash" data-i18n="نقداً">نقداً</option><option value="credit" data-i18n="على الحساب">على الحساب</option></select>
-            </div>
-            <div><label class="f" for="invDate" data-i18n="تاريخ الفاتورة">تاريخ الفاتورة</label><input type="date" id="invDate"></div>
-          </div>
+          <div style="margin-top:10px"><label class="f" for="invDate" data-i18n="تاريخ الفاتورة">تاريخ الفاتورة</label><input type="date" id="invDate"></div>
         </div>
 
         <details class="invoice-details"><summary data-i18n="الجوال والخصم والتوصيل">الجوال والخصم والتوصيل</summary><div class="card-b">          <div class="grid2">
@@ -129,6 +124,7 @@
         <input type="text" id="invSearch" placeholder="بحث برقم الفاتورة أو اسم العميل / الجهة" data-i18n-ph="بحث برقم الفاتورة أو اسم العميل / الجهة" style="width:250px">
         <select id="invFilter" style="width:150px">
           <option value="all" data-i18n="كل الفواتير">كل الفواتير</option>
+          <option value="card" data-i18n="بطاقة">بطاقة</option>
           <option value="cash" data-i18n="نقداً">نقداً</option>
           <option value="credit" data-i18n="على الحساب (غير محصّلة)">على الحساب (غير محصّلة)</option>
           <option value="paid" data-i18n="آجل محصّل">آجل محصّل</option>
@@ -222,7 +218,7 @@
     <div class="card">
       <div class="card-h"><h3 data-i18n="المبيعات اليومية">المبيعات اليومية</h3></div>
       <div style="max-height:420px; overflow:auto">
-        <table><thead><tr><th data-i18n="التاريخ">التاريخ</th><th style="width:70px" data-i18n="فواتير">فواتير</th><th style="width:100px" data-i18n="نقداً">نقداً</th><th style="width:100px" data-i18n="آجل">آجل</th><th style="width:110px" data-i18n="الإجمالي">الإجمالي</th></tr></thead>
+        <table><thead><tr><th data-i18n="التاريخ">التاريخ</th><th style="width:70px" data-i18n="فواتير">فواتير</th><th style="width:100px" data-i18n="بطاقة">بطاقة</th><th style="width:100px" data-i18n="نقداً">نقداً</th><th style="width:100px" data-i18n="آجل">آجل</th><th style="width:110px" data-i18n="الإجمالي">الإجمالي</th></tr></thead>
         <tbody id="dailyRows"></tbody></table>
       </div>
     </div>
@@ -393,6 +389,21 @@
   </div>
 </div>
 
+<!-- نافذة اختيار طريقة الدفع -->
+<div class="modal" id="payModal">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-h"><h3 data-i18n="طريقة الدفع">طريقة الدفع</h3><button class="x" data-close>&times;</button></div>
+    <div class="modal-b">
+      <div class="pay-total"><span data-i18n="المطلوب">المطلوب</span><b class="num" id="payTotal"></b></div>
+      <div class="pay-opts">
+        <button class="btn btn-primary" data-pay="card" data-i18n="بطاقة">بطاقة</button>
+        <button class="btn" data-pay="cash" data-i18n="نقداً">نقداً</button>
+        <button class="btn" data-pay="credit" data-i18n="على الحساب">على الحساب</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- نافذة طلب رمز -->
 <div class="modal" id="askModal">
   <div class="modal-box" style="max-width:400px">
@@ -411,12 +422,12 @@
 
 <div id="toast" role="status" aria-live="polite"></div>
 
-<script src="auth.js?v=22"></script>
-<script src="i18n.js?v=22"></script>
-<script src="lock.js?v=22"></script>
-<script src="data.js?v=22"></script>
-<script src="qr.js?v=22"></script>
-<script src="sync.js?v=22"></script>
-<script src="app.js?v=22"></script>
+<script src="auth.js?v=23"></script>
+<script src="i18n.js?v=23"></script>
+<script src="lock.js?v=23"></script>
+<script src="data.js?v=23"></script>
+<script src="qr.js?v=23"></script>
+<script src="sync.js?v=23"></script>
+<script src="app.js?v=23"></script>
 </body>
 </html>

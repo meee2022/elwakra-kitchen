@@ -56,7 +56,8 @@ export const push = mutation({
           if (!same) throw new Error("FORBIDDEN: cashier cannot modify existing invoices");
           saved.push(inv.uid); continue;
         }
-        if (inv.status !== "active" || (inv.type !== "cash" && inv.type !== "credit") || inv.paid !== (inv.type === "cash")) throw new Error("Invalid invoice state");
+        // Card and cash are settled on the spot; only credit starts unpaid.
+        if (inv.status !== "active" || !["cash", "card", "credit"].includes(inv.type) || inv.paid !== (inv.type !== "credit")) throw new Error("Invalid invoice state");
       }
       // Two devices can issue the same number on the same day. The fingerprint covers the
       // date, time, total and items, so a mismatch means a different invoice, not an update.
@@ -132,6 +133,7 @@ export const summary = query({
       voided: rows.length - active.length,
       units,
       total: sum((r) => r.total),
+      card: active.filter((r) => r.type === "card").reduce((s, r) => s + r.total, 0),
       cash: active.filter((r) => r.type === "cash").reduce((s, r) => s + r.total, 0),
       credit: active.filter((r) => r.type === "credit").reduce((s, r) => s + r.total, 0),
       unpaid: active

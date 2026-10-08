@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#A63C22">
 <link rel="icon" href="icons/favicon.png">
 <link rel="stylesheet" href="fonts/cairo.css">
-<script src="i18n.js?v=22"></script>
+<script src="i18n.js?v=23"></script>
 <style>
 :root{
   --brand:#A63C22; --brand-dark:#7C2D17; --cream:#FAF6F1; --paper:#fff;
@@ -100,7 +100,7 @@ input,select,.card,.row,.stat{min-width:0;max-width:100%}
 }
 @media(max-height:650px){header{position:static}}
 </style>
-<link rel="stylesheet" href="auth.css?v=22">
+<link rel="stylesheet" href="auth.css?v=23">
 </head>
 <body>
 
@@ -164,7 +164,7 @@ input,select,.card,.row,.stat{min-width:0;max-width:100%}
 
 </main>
 
-<script src="auth.js?v=22"></script>
+<script src="auth.js?v=23"></script>
 <script>
 'use strict';
 const $ = s => document.querySelector(s);
@@ -235,6 +235,7 @@ async function refresh() {
     $('#stats').innerHTML =
       stat(t('إجمالي المبيعات'), money(r.total) + ' ' + t('ر.ق'), r.invoices + ' ' + t('فاتورة')) +
       stat(t('عدد الوجبات المباعة'), r.units, t('وحدة'), 'g') +
+      stat(t('بطاقة'), money(r.card) + ' ' + t('ر.ق'), '', 'g') +
       stat(t('نقداً'), money(r.cash) + ' ' + t('ر.ق'), '', 'g') +
       stat(t('على الحساب'), money(r.credit) + ' ' + t('ر.ق'), t('غير محصّل: ') + money(r.unpaid), 'w') +
       stat(t('متوسط الفاتورة'), money(r.invoices ? r.total / r.invoices : 0) + ' ' + t('ر.ق'), '') +

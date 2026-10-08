@@ -29,7 +29,7 @@ export default defineSchema({
     customer: v.string(),
     phone: v.string(),
 
-    type: v.string(),          // cash | credit
+    type: v.string(),          // cash | card | credit
     paid: v.boolean(),
     paidAt: v.union(v.string(), v.null()),
 

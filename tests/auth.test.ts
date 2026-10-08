@@ -60,6 +60,17 @@ describe("account access controls",()=>{
     const row=await t.run(ctx=>ctx.db.query("invoices").unique());
     expect(row?.customer).toBe("Test");expect(row?.status).toBe("void");
   });
+  it("takes card sales as paid on the spot and reports them apart from cash",async()=>{
+    const {t,login}=await setup("cashier");
+    const push=(over:object)=>t.mutation(api.invoices.push,{token:login.token,invoices:[{...invoice,...over}]});
+    await push({uid:"card-1",type:"card",paid:true});
+    await expect(push({uid:"card-2",type:"card",paid:false})).rejects.toThrow("Invalid invoice state");
+    await expect(push({uid:"cheque-1",type:"cheque",paid:true})).rejects.toThrow("Invalid invoice state");
+    await t.mutation(internal.authSessions.provision,{username:"boss",passwordHash:hash,role:"manager"});
+    const boss=await t.action(api.auth.login,{username:"boss",password});
+    const r=await t.query(api.invoices.summary,{token:boss.token});
+    expect(r.card).toBe(10);expect(r.cash).toBe(0);expect(r.total).toBe(10);
+  });
   it("checks amounts on the server",async()=>{
     const {t,login}=await setup("cashier");
     await expect(t.mutation(api.invoices.push,{token:login.token,invoices:[{...invoice,total:999}]})).rejects.toThrow("Invalid invoice totals");

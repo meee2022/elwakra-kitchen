@@ -200,6 +200,7 @@ input:focus,select:focus,textarea:focus{
 }
 .b-cash,.b-paid{background:var(--ok-bg); color:var(--ok)}
 .b-credit{background:var(--warn-bg); color:var(--warn)}
+.b-card{background:#E6EEF6; color:#2B5A88}
 .b-void{background:var(--danger-bg); color:var(--danger)}
 
 /* ══════════ الجداول ══════════ */
@@ -796,3 +797,13 @@ tbody tr:nth-child(even) td{background:#FAF4EE}
   .ci input.qty, .ci input.pr{padding-top:2px; padding-bottom:2px}
   .cart-empty{padding:14px 12px}
 }
+
+
+/* ============================================================
+   Payment method chooser (shown when an invoice is saved)
+   ============================================================ */
+.pay-total{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:16px; font-weight:700; color:var(--muted)}
+.pay-total b{font-size:24px; font-weight:800; color:var(--primary)}
+.pay-opts{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.pay-opts .btn{justify-content:center; padding:15px 12px; font-size:16px; font-weight:700}
+.pay-opts .btn-primary{grid-column:1 / -1; padding:20px 12px; font-size:19px}
