@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#A63C22">
 <link rel="icon" href="icons/favicon.png">
 <link rel="stylesheet" href="fonts/cairo.css">
-<script src="i18n.js?v=20"></script>
+<script src="i18n.js?v=21"></script>
 <style>
 :root{
   --brand:#A63C22; --brand-dark:#7C2D17; --cream:#FAF6F1; --paper:#fff;
@@ -67,7 +67,7 @@ th{background:var(--cream);font-size:12px;color:var(--muted);font-weight:700}
 .empty{padding:28px;text-align:center;color:var(--muted)}
 [hidden]{display:none!important}
 /* Match the POS workspace without changing dashboard behavior. */
-:root{--paper:oklch(99% .003 65);--cream:oklch(96.5% .007 65);--muted:oklch(49% .021 55);--line:oklch(88% .012 65)}
+:root{--paper:#FDFBFA;--cream:#F7F3EF;--muted:#6A5E55;--line:#DDD6CF}
 body{font-family:'Cairo',Tahoma,sans-serif}
 header{background:var(--paper);color:var(--ink);border-bottom:1px solid var(--line);padding:18px 24px}
 header .logo{color:var(--paper);border:0;border-radius:11px;background:var(--brand-dark)}
@@ -100,7 +100,7 @@ input,select,.card,.row,.stat{min-width:0;max-width:100%}
 }
 @media(max-height:650px){header{position:static}}
 </style>
-<link rel="stylesheet" href="auth.css?v=20">
+<link rel="stylesheet" href="auth.css?v=21">
 </head>
 <body>
 
@@ -164,7 +164,7 @@ input,select,.card,.row,.stat{min-width:0;max-width:100%}
 
 </main>
 
-<script src="auth.js?v=20"></script>
+<script src="auth.js?v=21"></script>
 <script>
 'use strict';
 const $ = s => document.querySelector(s);
@@ -264,7 +264,7 @@ async function refresh() {
 }
 
 /* ---------- اللغة ---------- */
-const LANG_KEY = 'stdk_dashboard_lang';
+const LANG_KEY = 'stdk_lang';   // shared with the sign-in screen and the till
 $('#btnLang').addEventListener('click', () => {
   const next = I18n.get() === 'ar' ? 'en' : 'ar';
   try { localStorage.setItem(LANG_KEY, next); } catch (e) {}

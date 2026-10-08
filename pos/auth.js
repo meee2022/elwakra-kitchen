@@ -12,30 +12,53 @@ const Auth = (() => {
     if(out.status!=='success')throw new Error(out.errorMessage||'REQUEST_FAILED');
     return out.value;
   }
+  // One language choice for the gate, the till and the dashboard on this device.
+  const LANG_KEY='stdk_lang';
+  let lang='ar';try{lang=localStorage.getItem(LANG_KEY)==='en'?'en':'ar';}catch{}
+  const TEXT={
+    ar:{title:'تسجيل الدخول',user:'اسم المستخدم',pass:'كلمة المرور',show:'إظهار',hide:'إخفاء',submit:'دخول',checking:'جاري التحقق…',
+        tag:'نقاط البيع والفواتير الإلكترونية',other:'English',
+        note:'يلزم الإنترنت عند الدخول · الجلسة 8 ساعات · لو نسيت كلمة المرور تواصل مع مسؤول النظام.'},
+    en:{title:'Sign in',user:'Username',pass:'Password',show:'Show',hide:'Hide',submit:'Sign in',checking:'Checking…',
+        tag:'Point of sale & e-invoicing',other:'عربي',
+        note:'Internet is required to sign in · sessions last 8 hours · contact the administrator if you forget your password.'}
+  };
+  // Status messages are written as "Arabic — English"; show the half for the current language.
+  const pick=text=>{const parts=String(text||'').split(' — ');return (lang==='en'&&parts[1])||parts[0];};
   function gate(message='') {
     document.documentElement.classList.add('auth-pending');
     if(document.querySelector('#authGate'))return;
     const root=document.createElement('div');root.id='authGate';
-    root.innerHTML=`<div class="auth-card"><aside class="auth-side"><div class="auth-mark">STDK</div><div class="auth-side-name">مطابخ الجنوب<br> للمأكولات الشعبية</div><div class="auth-side-en" dir="ltr">Southern Traditional Dishes Kitchens</div><div class="auth-side-tag">نقاط البيع والفواتير الإلكترونية · POS &amp; e-invoicing</div></aside><form class="auth-box"><h1>تسجيل الدخول<span dir="ltr">Sign in to your account</span></h1><label for="authUsername">اسم المستخدم<span dir="ltr">Username</span></label><input id="authUsername" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" dir="ltr" required maxlength="40"><label for="authPassword">كلمة المرور<span dir="ltr">Password</span></label><div class="auth-password"><input id="authPassword" name="password" type="password" autocomplete="current-password" dir="ltr" required maxlength="256"><button type="button" id="authShow" aria-controls="authPassword" aria-pressed="false">إظهار / Show</button></div><div class="auth-error" id="authError" role="status" aria-live="polite"></div><button type="submit" class="auth-submit">دخول · Sign in</button><p class="auth-note">يلزم الإنترنت عند الدخول · الجلسة 8 ساعات · لو نسيت كلمة المرور تواصل مع مسؤول النظام.<span dir="ltr">Internet is required to sign in · sessions last 8 hours · contact the administrator if you forget your password.</span></p></form></div>`;
+    root.innerHTML=`<div class="auth-card"><aside class="auth-side"><div class="auth-mark">STDK</div><div class="auth-side-name">مطابخ الجنوب<br> للمأكولات الشعبية</div><div class="auth-side-en" dir="ltr">Southern Traditional Dishes Kitchens</div><div class="auth-side-tag" data-t="tag"></div></aside><form class="auth-box"><button type="button" id="authLang" class="auth-lang"></button><h1 data-t="title"></h1><label for="authUsername" data-t="user"></label><input id="authUsername" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" dir="ltr" required maxlength="40"><label for="authPassword" data-t="pass"></label><div class="auth-password"><input id="authPassword" name="password" type="password" autocomplete="current-password" dir="ltr" required maxlength="256"><button type="button" id="authShow" aria-controls="authPassword" aria-pressed="false"></button></div><div class="auth-error" id="authError" role="status" aria-live="polite"></div><button type="submit" class="auth-submit" data-t="submit"></button><p class="auth-note" data-t="note"></p></form></div>`;
     document.body.append(root);
-    root.querySelector('#authError').textContent=message;
-    root.querySelector('#authShow').onclick=()=>{
-      const input=root.querySelector('#authPassword'),show=input.type==='password';
-      input.type=show?'text':'password';root.querySelector('#authShow').textContent=show?'إخفاء / Hide':'إظهار / Show';root.querySelector('#authShow').setAttribute('aria-pressed',String(show));
+    const $g=sel=>root.querySelector(sel);
+    let status=message;
+    const paint=()=>{
+      root.lang=lang;root.dir=lang==='en'?'ltr':'rtl';
+      root.querySelectorAll('[data-t]').forEach(el=>{el.textContent=TEXT[lang][el.dataset.t];});
+      $g('#authLang').textContent=TEXT[lang].other;
+      $g('#authShow').textContent=TEXT[lang][$g('#authPassword').type==='password'?'show':'hide'];
+      $g('#authError').textContent=pick(status);
     };
-    root.querySelector('form').onsubmit=async event=>{
-      event.preventDefault();const button=root.querySelector('.auth-submit'),error=root.querySelector('#authError');
-      button.disabled=true;button.textContent='جاري التحقق… / Checking…';error.textContent='';
+    paint();
+    $g('#authLang').onclick=()=>{lang=lang==='ar'?'en':'ar';try{localStorage.setItem(LANG_KEY,lang);}catch{}paint();};
+    $g('#authShow').onclick=()=>{
+      const input=$g('#authPassword'),show=input.type==='password';
+      input.type=show?'text':'password';$g('#authShow').setAttribute('aria-pressed',String(show));paint();
+    };
+    $g('form').onsubmit=async event=>{
+      event.preventDefault();const button=$g('.auth-submit');
+      button.disabled=true;button.textContent=TEXT[lang].checking;status='';$g('#authError').textContent='';
       try{
-        const result=await request('auth:login',{username:root.querySelector('#authUsername').value,password:root.querySelector('#authPassword').value},'action');
+        const result=await request('auth:login',{username:$g('#authUsername').value,password:$g('#authPassword').value},'action');
         if(result.error)throw new Error(result.error);
-        sessionStorage.setItem(KEY,JSON.stringify(result));root.querySelector('#authPassword').value='';location.reload();
-      }catch(e){error.textContent=e.message.includes('TOO_MANY_ATTEMPTS')
+        sessionStorage.setItem(KEY,JSON.stringify(result));$g('#authPassword').value='';location.reload();
+      }catch(e){status=e.message.includes('TOO_MANY_ATTEMPTS')
         ?'محاولات كثيرة. انتظر 15 دقيقة ثم حاول مرة أخرى. — Too many attempts. Wait 15 minutes and try again.'
         :e.message.includes('INVALID_CREDENTIALS')
         ?'اسم المستخدم أو كلمة المرور غير صحيحة. — Wrong username or password.'
         :'تعذّر تسجيل الدخول. تحقق من الاتصال وحاول مرة أخرى. — Could not sign in. Check the connection and try again.';}
-      finally{button.disabled=false;button.textContent='دخول · Sign in';}
+      finally{button.disabled=false;paint();}
     };
   }
   function lock(message) {

@@ -1354,6 +1354,7 @@ function rerenderAll() {
 $('#btnLang').addEventListener('click', () => {
   const next = I18n.get() === 'ar' ? 'en' : 'ar';
   db.settings.lang = next;
+  try { localStorage.setItem('stdk_lang', next); } catch (e) {}
   save();
   I18n.set(next, rerenderAll);
 });
@@ -1379,7 +1380,9 @@ function tick() {
   db.settings.sync = {...db.settings.sync, url:Auth.base, enabled:true};
   await flush();
   Lock.guard();                       // يقفل الشاشة إن كان هناك رمز دخول
-  I18n.set(db.settings.lang || 'ar');
+  // The language picked on the sign-in screen carries into the till.
+  let chosen = null; try { chosen = localStorage.getItem('stdk_lang'); } catch (e) {}
+  I18n.set(chosen || db.settings.lang || 'ar');
   applyBranding();
   $('#pageTitle').textContent = t(pageCopy.pos[0]);
   $('#pageDescription').textContent = t(pageCopy.pos[1]);
