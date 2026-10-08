@@ -28,7 +28,7 @@
 
 | الرابط | لمَن |
 |---|---|
-| **https://elwakra-kitchen.vercel.app/** | صفحة الدخول |
+| **https://stdk.vercel.app/** | صفحة الدخول |
 | `…/pos/` | نقطة البيع — للكاشير |
 | `…/pos/dashboard.html` | متابعة المبيعات — للمالك |
 
