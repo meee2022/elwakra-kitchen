@@ -25,6 +25,18 @@ Status: implemented and locally tested, not deployed. Convex CLI currently repor
 
 - An upload whose number is already held by a different invoice (different fingerprint) is rejected with UID_CONFLICT rather than overwriting it; cancelling or collecting the same invoice still updates it.
 
+## Account management (dashboard)
+
+Managers add cashier or manager accounts, reset passwords and disable or re-enable accounts from the
+"Accounts" card of `pos/dashboard.html`. Functions: `authSessions:accounts` (list, no hashes) and the
+actions `auth:createAccount`, `auth:setPassword`, `auth:setDisabled`.
+
+- Every change re-confirms the acting manager's own password on the server and counts against the
+  same per-account attempt limit as sign-in; a successful change clears the count.
+- Resetting a password or disabling an account deletes that account's sessions at once.
+- A manager cannot disable their own account, so at least one manager can always sign in.
+- `scripts/create-account.py` remains as the recovery path when no manager can sign in.
+
 ## Scope and limitations
 
 This protects server data and ordinary access through the link. Legacy invoices are still in IndexedDB on the cashier device, not encrypted by this change. Anyone controlling that device or its browser developer tools can read locally stored data. Use a dedicated OS account/device for the cashier; do not describe this as encryption of local invoice history. Browser session tokens are exposed to same-origin JavaScript, so XSS defenses remain necessary.

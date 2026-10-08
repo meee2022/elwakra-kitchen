@@ -9,7 +9,8 @@ const Auth = (() => {
     const response=await fetch(`${BASE}/api/${kind}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path,args,format:'json'}),signal:AbortSignal.timeout(15000)});
     if(!response.ok)throw new Error('NETWORK_ERROR');
     const out=await response.json();
-    if(out.status!=='success')throw new Error(out.errorMessage||'REQUEST_FAILED');
+    // In production the message is redacted to "Server Error"; the code we threw is in errorData.
+    if(out.status!=='success')throw new Error((typeof out.errorData==='string'&&out.errorData)||out.errorMessage||'REQUEST_FAILED');
     return out.value;
   }
   // One language choice for the gate, the till and the dashboard on this device.
