@@ -97,6 +97,31 @@ export const list = query({
   },
 });
 
+/** Invoices that arrived or changed after `since`, oldest first, so a manager's device can mirror the cloud. */
+export const changes = query({
+  args: { token: v.string(), since: v.number(), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    await requireSession(ctx, args.token, true);
+    const page = Math.min(Math.max(1, Math.floor(args.limit ?? 200)), 200);
+    let rows = await ctx.db.query("invoices").withIndex("by_syncedAt", (q) => q.gt("syncedAt", args.since)).take(page);
+    const more = rows.length === page;
+    if (more) {
+      // One push stamps all its invoices with the same time. Finish that group, or the caller's
+      // next "after this time" request would skip the ones left behind.
+      const last = rows[page - 1].syncedAt;
+      rows = [
+        ...rows.filter((r) => r.syncedAt < last),
+        ...(await ctx.db.query("invoices").withIndex("by_syncedAt", (q) => q.eq("syncedAt", last)).collect()),
+      ];
+    }
+    return {
+      rows: rows.map(({ _id, _creationTime, syncedAt, ...inv }) => inv),
+      next: rows.length ? rows[rows.length - 1].syncedAt : args.since,
+      more,
+    };
+  },
+});
+
 /** ملخّص فترة: الإجماليات والكميات والأصناف الأكثر مبيعاً. */
 export const summary = query({
   args: { token: v.optional(v.string()), key: v.optional(v.string()), from: v.optional(v.string()), to: v.optional(v.string()) },

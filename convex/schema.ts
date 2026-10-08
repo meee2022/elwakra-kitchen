@@ -52,5 +52,6 @@ export default defineSchema({
     syncedAt: v.number(),      // وقت وصول آخر نسخة من هذه الفاتورة
   })
     .index("by_uid", ["uid"])
-    .index("by_date", ["date"]),
+    .index("by_date", ["date"])
+    .index("by_syncedAt", ["syncedAt"]),   // lets a manager's device ask "what changed since I last looked"
 });

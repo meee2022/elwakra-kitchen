@@ -154,3 +154,34 @@ describe("account management",()=>{
     await expect(t.action(api.auth.createAccount,{...base,username:"late"})).rejects.toThrow("TOO_MANY_ATTEMPTS");
   });
 });
+
+describe("manager mirror of the cloud",()=>{
+  const inv=(n:number,over:object={})=>({...invoice,uid:"m-"+n,no:n,hash:"h"+n,...over});
+  it("is closed to cashiers and to callers without a session",async()=>{
+    const {t,login}=await setup("cashier");
+    await expect(t.query(api.invoices.changes,{token:login.token,since:0})).rejects.toThrow("FORBIDDEN");
+    await expect(t.query(api.invoices.changes,{token:"0".repeat(64),since:0})).rejects.toThrow("AUTH_REQUIRED");
+  });
+  it("returns only what arrived or changed after the given moment, without server fields",async()=>{
+    const {t,login}=await setup();const token=login.token;
+    await t.mutation(api.invoices.push,{token,invoices:[inv(1),inv(2)]});
+    const first=await t.query(api.invoices.changes,{token,since:0});
+    expect(first.rows.map((r:any)=>r.uid)).toEqual(["m-1","m-2"]);expect(first.more).toBe(false);
+    expect(Object.keys(first.rows[0]).filter(k=>k.startsWith("_"))).toEqual([]);
+    expect((await t.query(api.invoices.changes,{token,since:first.next})).rows).toEqual([]);
+    await new Promise(r=>setTimeout(r,5));
+    await t.mutation(api.invoices.push,{token,invoices:[inv(1,{status:"void"}),inv(3)]});
+    const second=await t.query(api.invoices.changes,{token,since:first.next});
+    expect(second.rows.map((r:any)=>r.uid+":"+r.status).sort()).toEqual(["m-1:void","m-3:active"]);
+  });
+  it("never splits invoices that arrived together across pages",async()=>{
+    const {t,login}=await setup();const token=login.token;
+    await t.mutation(api.invoices.push,{token,invoices:[inv(1),inv(2),inv(3)]});   // one push: one arrival time
+    await new Promise(r=>setTimeout(r,5));
+    await t.mutation(api.invoices.push,{token,invoices:[inv(4)]});
+    const page=await t.query(api.invoices.changes,{token,since:0,limit:2});
+    expect(page.rows.map((r:any)=>r.no).sort()).toEqual([1,2,3]);expect(page.more).toBe(true);
+    const rest=await t.query(api.invoices.changes,{token,since:page.next,limit:2});
+    expect(rest.rows.map((r:any)=>r.no)).toEqual([4]);expect(rest.more).toBe(false);
+  });
+});
