@@ -612,7 +612,7 @@ function printInvoice(inv) {
 /* تنسيقات الفاتورة مضمّنة نصياً — عشان الملف المصدَّر يفتح على أي جهاز
    بدون الحاجة لملف app.css، ولأن المتصفح يمنع قراءة قواعد CSS من ملف محلي. */
 /* الخط مضمّن نصياً أيضاً لأن الطباعة تجري في إطار معزول لا يرث تنسيقات الصفحة */
-const PRINT_FONT = `@import url('fonts/cairo.css');`;
+const PRINT_FONT = `@import url('fonts/cairo.css?v=25');`;
 
 const INVOICE_CSS = PRINT_FONT + `
 .inv-wrap{position:relative;max-width:100%}

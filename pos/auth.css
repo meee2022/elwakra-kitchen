@@ -1,4 +1,4 @@
-@import url('fonts/cairo.css');
+@import url('fonts/cairo.css?v=25');
 
 /* Until an account session is validated, nothing but the gate is rendered. */
 html.auth-pending body>:not(#authGate){display:none!important}
