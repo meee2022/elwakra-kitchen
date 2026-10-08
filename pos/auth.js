@@ -16,7 +16,7 @@ const Auth = (() => {
     document.documentElement.classList.add('auth-pending');
     if(document.querySelector('#authGate'))return;
     const root=document.createElement('div');root.id='authGate';
-    root.innerHTML=`<form class="auth-box"><div class="auth-brand">مطابخ الجنوب · STDK</div><h1>تسجيل الدخول · Sign in</h1><p>ادخل بحسابك للوصول إلى مساحة العمل. تظهر الأدوات حسب صلاحيات حسابك.<br><span dir="ltr">Sign in to reach the workspace. Tools appear according to your account role.</span></p><label for="authUsername">اسم المستخدم / Username</label><input id="authUsername" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" dir="ltr" required maxlength="40"><label for="authPassword">كلمة المرور / Password</label><div class="auth-password"><input id="authPassword" name="password" type="password" autocomplete="current-password" dir="ltr" required maxlength="256"><button type="button" id="authShow" aria-controls="authPassword" aria-pressed="false">إظهار / Show</button></div><div class="auth-error" id="authError" role="status" aria-live="polite"></div><button type="submit" class="auth-submit">دخول · Sign in</button><p style="margin:14px 0 0;font-size:12px">يلزم الإنترنت عند الدخول. تنتهي الجلسة بعد 8 ساعات. نسيت كلمة المرور؟ تواصل مع مسؤول النظام.<br><span dir="ltr">Internet is required to sign in. The session ends after 8 hours. Forgot your password? Contact the system administrator.</span></p></form>`;
+    root.innerHTML=`<div class="auth-card"><aside class="auth-side"><div class="auth-mark">STDK</div><div class="auth-side-name">مطابخ الجنوب<br> للمأكولات الشعبية</div><div class="auth-side-en" dir="ltr">Southern Traditional Dishes Kitchens</div><div class="auth-side-tag">نقاط البيع والفواتير الإلكترونية · POS &amp; e-invoicing</div></aside><form class="auth-box"><h1>تسجيل الدخول<span dir="ltr">Sign in to your account</span></h1><label for="authUsername">اسم المستخدم<span dir="ltr">Username</span></label><input id="authUsername" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" dir="ltr" required maxlength="40"><label for="authPassword">كلمة المرور<span dir="ltr">Password</span></label><div class="auth-password"><input id="authPassword" name="password" type="password" autocomplete="current-password" dir="ltr" required maxlength="256"><button type="button" id="authShow" aria-controls="authPassword" aria-pressed="false">إظهار / Show</button></div><div class="auth-error" id="authError" role="status" aria-live="polite"></div><button type="submit" class="auth-submit">دخول · Sign in</button><p class="auth-note">يلزم الإنترنت عند الدخول · الجلسة 8 ساعات · لو نسيت كلمة المرور تواصل مع مسؤول النظام.<span dir="ltr">Internet is required to sign in · sessions last 8 hours · contact the administrator if you forget your password.</span></p></form></div>`;
     document.body.append(root);
     root.querySelector('#authError').textContent=message;
     root.querySelector('#authShow').onclick=()=>{
@@ -47,7 +47,15 @@ const Auth = (() => {
     const saved=read();
     if(saved?.token){
       try{
-        const profile=await request('authSessions:me',{token:saved.token});
+        let profile;
+        try{profile=await request('authSessions:me',{token:saved.token});}
+        catch(e){
+          // Server unreachable (as opposed to rejecting the session): a reload during an outage must
+          // not lock out a signed-in cashier. Resume on the stored, unexpired session; the server
+          // still authorises every request once the connection returns.
+          if(e.message.includes('AUTH_REQUIRED')||!saved.role||!(saved.expiresAt>Date.now()))throw e;
+          profile={username:saved.username,role:saved.role,expiresAt:saved.expiresAt};
+        }
         current={token:saved.token,...profile};
         if(manager&&current.role!=='manager'){location.replace('./');return new Promise(()=>{});}
         document.documentElement.dataset.role=current.role;

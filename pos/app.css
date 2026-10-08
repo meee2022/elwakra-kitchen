@@ -94,7 +94,7 @@ a{color:var(--primary); text-decoration:none}
 .topbar .titles{flex:1; min-width:0}
 .topbar h1{font-size:17px; font-weight:800; letter-spacing:-.2px}
 .topbar .sub{font-size:11px; opacity:.78; letter-spacing:.6px; font-weight:500}
-.clock{font-size:12.5px; opacity:.9; text-align:left; white-space:nowrap; font-weight:500}
+.clock{font-size:12.5px; opacity:.9; text-align:end; white-space:nowrap; font-weight:500}
 
 .lang-btn{
   font-size:12.5px; font-weight:700; padding:7px 15px; border-radius:999px;
@@ -204,7 +204,7 @@ input:focus,select:focus,textarea:focus{
 
 /* ══════════ الجداول ══════════ */
 table{width:100%; border-collapse:collapse}
-th,td{padding:10px 12px; text-align:right; font-size:14px}
+th,td{padding:10px 12px; text-align:start; font-size:14px}
 thead th{
   background:linear-gradient(135deg,var(--primary),var(--primary-dark));
   color:var(--accent-light); font-size:11.5px; font-weight:700; letter-spacing:.3px;
@@ -245,7 +245,7 @@ td.acts .btn + .btn{margin-inline-start:5px}
 .prod-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(172px,1fr)); gap:12px}
 .prod{
   border:1px solid var(--border); background:var(--card); border-radius:var(--r-md);
-  padding:14px 15px; text-align:right; min-height:104px;
+  padding:14px 15px; text-align:start; min-height:104px;
   display:flex; flex-direction:column; justify-content:space-between; gap:10px;
   box-shadow:0 1px 2px rgba(42,29,23,.04);
   transition:transform .22s var(--ease), box-shadow .22s var(--ease), border-color .22s var(--ease);
@@ -316,7 +316,7 @@ td.acts .btn + .btn{margin-inline-start:5px}
 .ci input.qty{width:46px}
 .ci input.pr{width:64px}
 .ci-total{
-  font-weight:800; min-width:66px; text-align:left; font-size:14.5px;
+  font-weight:800; min-width:66px; text-align:end; font-size:14.5px;
   font-variant-numeric:tabular-nums; color:var(--ink);
 }
 .rm{

@@ -1,6 +1,6 @@
 import { requireSession } from "./access";
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 /* Server authorization: only unexpired account sessions are accepted. Legacy shared keys never grant access. */
 
@@ -58,6 +58,9 @@ export const push = mutation({
         }
         if (inv.status !== "active" || (inv.type !== "cash" && inv.type !== "credit") || inv.paid !== (inv.type === "cash")) throw new Error("Invalid invoice state");
       }
+      // Two devices can issue the same number on the same day. The fingerprint covers the
+      // date, time, total and items, so a mismatch means a different invoice, not an update.
+      if (existing && existing.hash !== inv.hash) throw new ConvexError("UID_CONFLICT");
       if (!inv.items.length || inv.items.some(i => !Number.isFinite(i.qty) || i.qty <= 0 || !Number.isFinite(i.price) || i.price < 0)) throw new Error("Invalid invoice items");
       const subtotal = inv.items.reduce((n,i)=>n+i.qty*i.price,0);
       const base = Math.max(0, subtotal-inv.discount)+inv.delivery;

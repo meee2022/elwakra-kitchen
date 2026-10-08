@@ -105,8 +105,9 @@ function idbReq(mode, fn) {
     if (!idb) return rej(new Error('no idb'));
     const tx = idb.transaction(IDB_STORE, mode);
     const rq = fn(tx.objectStore(IDB_STORE));
-    rq.onsuccess = () => res(rq.result);
-    rq.onerror = () => rej(rq.error);
+    // A request can succeed and its transaction still abort (quota, crash); only commit is durable.
+    tx.oncomplete = () => res(rq.result);
+    tx.onerror = tx.onabort = () => rej(tx.error || rq.error);
   });
 }
 const idbGet = k => idbReq('readonly', st => st.get(k));
@@ -163,10 +164,10 @@ async function dailySnapshot() {
 async function flush() {
   const json = JSON.stringify(db);
   if (idb) {
-    try { await idbPut('main', json); return; } catch (e) { /* نجرّب البديل */ }
+    try { await idbPut('main', json); return true; } catch (e) { /* نجرّب البديل */ }
   }
-  try { localStorage.setItem(STORE_KEY, json); }
-  catch (e) { toast(t('تعذّر حفظ البيانات — اعمل نسخة احتياطية فوراً وأعد تشغيل المتصفح.'), 'err'); }
+  try { localStorage.setItem(STORE_KEY, json); return true; }
+  catch (e) { toast(I18n.t('تعذّر حفظ البيانات — اعمل نسخة احتياطية فوراً وأعد تشغيل المتصفح.'), 'err'); return false; }
 }
 function save() { flush(); }
 
@@ -344,7 +345,7 @@ function updateTotals() {
   // سطرا الخصم والتوصيل يظهران عند وجود قيمة فقط — أقل تشويشاً ومساحة أوفر
   $('#rowDisc').hidden = !(t.discount > 0);
   $('#rowDel').hidden = !(t.delivery > 0);
-  $('#tGrand').textContent = money(t.total) + ' ر.ق';
+  $('#tGrand').textContent = money(t.total) + ' ' + I18n.t('ر.ق');
   $('#mobileCartTotal').textContent = $('#tGrand').textContent;
   $('#btnSave').disabled = $('#btnSaveOnly').disabled = !cart.length;
 }
@@ -360,9 +361,14 @@ function clearCart() {
 }
 $('#btnClear').addEventListener('click', () => { if (!cart.length || confirm(t('إفراغ الفاتورة الحالية؟'))) clearCart(); });
 
-function saveInvoice(print) {
-  if (!Auth.active()) return toast('سجّل الدخول أولًا', 'err');
-  if (!cart.length) return;
+let savingInvoice = false;   // blocks a second click from issuing a duplicate while the first is being written
+async function saveInvoice(print) {
+  if (!Auth.active()) return toast(I18n.t('سجّل الدخول أولًا'), 'err');
+  if (!cart.length || savingInvoice) return;
+  savingInvoice = true;
+  try { await writeInvoice(print); } finally { savingInvoice = false; }
+}
+async function writeInvoice(print) {
   const t = currentTotals();
   const s = db.settings;
   const now = new Date();
@@ -395,7 +401,12 @@ function saveInvoice(print) {
   Sync.mark(inv);
   db.invoices.unshift(inv);
   db.settings.nextInvoiceNo = inv.no + 1;
-  save();
+  if (!(await flush())) {
+    // Not on disk: undo, keep the cart, and let the cashier retry instead of losing the sale.
+    db.invoices.shift();
+    db.settings.nextInvoiceNo = inv.no;
+    return;
+  }
   Sync.run(false);
   clearCart();
   toast(I18n.t2('تم حفظ الفاتورة رقم {0} — {1} ر.ق', inv.no, money(inv.total)), 'ok');
@@ -573,10 +584,10 @@ function printDoc(bodyHTML, css, pageRule) {
     setTimeout(cleanup, 60000);   // شبكة أمان لو لم يصل حدث انتهاء الطباعة
   };
 
-  // ننتظر تحميل الصور (الشعار وكود QR) وإلا خرجت الفاتورة بدونها
+  // ننتظر الصور (الشعار وكود QR) والخط معاً؛ وإلا طُبعت الفاتورة بلا صور أو بخط بديل
   const imgs = [...d.images];
-  Promise.all(imgs.map(i => i.complete ? null :
-    new Promise(r => { i.onload = i.onerror = r; }))).then(() => setTimeout(go, 20));
+  Promise.all([d.fonts.ready, ...imgs.map(i => i.complete ? null :
+    new Promise(r => { i.onload = i.onerror = r; }))]).then(() => setTimeout(go, 20));
 }
 
 function printInvoice(inv) {
@@ -594,49 +605,49 @@ const INVOICE_CSS = PRINT_FONT + `
 .inv-wrap{position:relative;max-width:100%}
 .inv,.inv *{box-sizing:border-box}
 .inv{width:100%;max-width:148mm;padding:7mm;background:#fff;color:#25201d;margin:0 auto;
-  font-family:'Cairo',"Segoe UI",Tahoma,Arial,sans-serif;font-size:9pt;line-height:1.6;direction:rtl}
-.inv-top{display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:2px solid #913f2c;break-inside:avoid}
-.inv-logo{width:15mm;height:15mm;flex:none}
+  font-family:'Cairo',"Segoe UI",Tahoma,Arial,sans-serif;font-size:9pt;line-height:1.45;direction:rtl}
+.inv-top{display:flex;align-items:center;gap:12px;padding-bottom:6px;border-bottom:2px solid #913f2c;break-inside:avoid}
+.inv-logo{width:13mm;height:13mm;flex:none}
 .inv-logo svg,.inv-logo img{display:block;width:100%;height:100%;object-fit:contain}
 .inv-title{flex:1;min-width:0;text-align:right}
-.inv-title .ar{font-size:13pt;font-weight:800;line-height:1.65;overflow-wrap:anywhere}
-.inv-title .en{font-size:7pt;font-weight:500;color:#655d58;line-height:1.6;direction:ltr;text-align:right}
+.inv-title .ar{font-size:13pt;font-weight:800;line-height:1.3;overflow-wrap:anywhere}
+.inv-title .en{font-size:7pt;font-weight:500;color:#655d58;line-height:1.4;direction:ltr;text-align:right}
 .inv-badge{flex:none;text-align:left;max-width:27mm;overflow-wrap:anywhere}
 .inv-badge .lab{font-size:6.5pt;font-weight:600;color:#655d58}
-.inv-badge .no{font-size:20pt;line-height:1.4;font-weight:800;color:#913f2c;direction:ltr;font-variant-numeric:tabular-nums}
-.inv-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px;break-inside:avoid}
+.inv-badge .no{font-size:18pt;line-height:1.15;font-weight:800;color:#913f2c;direction:ltr;font-variant-numeric:tabular-nums}
+.inv-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:6px;break-inside:avoid}
 .inv-strip div{font-size:8pt;min-width:0;overflow-wrap:anywhere}
-.inv-strip i{display:block;font-size:6.5pt;font-weight:600;font-style:normal;color:#776c64;margin-bottom:2px}
-.inv-strip+.inv-strip{margin-top:8px;padding-top:8px;border-top:1px solid #e3dcd6}
-.inv-cust{display:flex;flex-wrap:wrap;gap:8px 22px;padding:7px 10px;margin:9px 0;background:#f7f4f1;border:1px solid #e8e1dc;border-radius:4px;font-size:9pt;break-inside:avoid}
+.inv-strip i{display:block;font-size:6.5pt;font-weight:600;font-style:normal;color:#776c64;margin-bottom:0}
+.inv-strip+.inv-strip{margin-top:4px;padding-top:4px;border-top:1px solid #e3dcd6}
+.inv-cust{display:flex;flex-wrap:wrap;gap:4px 22px;padding:4px 10px;margin:6px 0;background:#f7f4f1;border:1px solid #e8e1dc;border-radius:4px;font-size:9pt;break-inside:avoid}
 .inv-cust span{min-width:0;overflow-wrap:anywhere}
-.inv-cust b{display:block;font-size:6.5pt;font-weight:600;color:#776c64;margin-bottom:3px}
+.inv-cust b{display:block;font-size:6.5pt;font-weight:600;color:#776c64;margin-bottom:0}
 table.inv-t{width:100%;border-collapse:collapse;table-layout:fixed;margin:0;border:0}
-table.inv-t th,table.inv-t td{position:static;box-shadow:none;border-radius:0;border:0;border-bottom:1px solid #e6e0db;padding:5px 5px;font-size:9pt;vertical-align:middle}
-table.inv-t th{background:#f0eae5;color:#514139;font-size:7pt;font-weight:700;text-align:center;white-space:normal;line-height:1.5}
+table.inv-t th,table.inv-t td{position:static;box-shadow:none;border-radius:0;border:0;border-bottom:1px solid #e6e0db;padding:2.5px 5px;font-size:9pt;vertical-align:middle}
+table.inv-t th{background:#f0eae5;color:#514139;font-size:7pt;font-weight:700;text-align:center;white-space:normal;line-height:1.3}
 table.inv-t th small{display:block;font-size:6pt;font-weight:500;color:#74675e}
-table.inv-t td.d{text-align:right;line-height:1.65;font-weight:600;overflow-wrap:anywhere}
+table.inv-t td.d{text-align:right;line-height:1.35;font-weight:600;overflow-wrap:anywhere}
 table.inv-t td.c{text-align:center;direction:ltr;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 table.inv-t td.amount{font-weight:700}
-table.inv-t td .en{display:block;float:none;font-size:6.8pt;font-weight:400;color:#776c64;direction:ltr;text-align:right;line-height:1.5;margin-top:2px}
+table.inv-t td .en{display:block;float:none;font-size:6.8pt;font-weight:400;color:#776c64;direction:ltr;text-align:right;line-height:1.25;margin-top:0}
 table.inv-t tbody tr td{background:#fff}
-table.inv-t tr.sum td{background:#fff;font-size:8pt;padding-top:6px;padding-bottom:6px}
+table.inv-t tr.sum td{background:#fff;font-size:8pt;padding-top:2.5px;padding-bottom:2.5px}
 table.inv-t td.lbl{text-align:right;font-weight:600}
-table.inv-t tr.total td{background:#eee4dd;color:#713520;border-top:1px solid #cfb9aa;border-bottom:1px solid #cfb9aa;font-size:10pt;font-weight:800;padding:10px 5px}
+table.inv-t tr.total td{background:#eee4dd;color:#713520;border-top:1px solid #cfb9aa;border-bottom:1px solid #cfb9aa;font-size:10pt;font-weight:800;padding:5px 5px}
 table.inv-t thead{display:table-header-group}
 table.inv-t tr{break-inside:avoid;page-break-inside:avoid}
-.inv-tafqeet{font-size:8pt;color:#514139;padding:7px 0;margin-top:3px;text-align:right;break-inside:avoid}
-.inv-bottom{display:flex;align-items:flex-end;gap:18px;margin-top:10px;break-inside:avoid;min-width:0}
+.inv-tafqeet{font-size:8pt;color:#514139;padding:4px 0;margin-top:1px;text-align:right;break-inside:avoid}
+.inv-bottom{display:flex;align-items:flex-end;gap:18px;margin-top:5px;break-inside:avoid;min-width:0}
 .inv-verify{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
-.inv-verify img{width:18mm;height:18mm;flex:none;display:block}
-.inv-verify .vt{min-width:0;font-size:6pt;color:#655d58;line-height:1.9}
+.inv-verify img{width:16mm;height:16mm;flex:none;display:block}
+.inv-verify .vt{min-width:0;font-size:6pt;color:#655d58;line-height:1.55}
 .inv-verify .vt b{color:#25201d;font-size:7pt}
 .inv-verify code{font-family:Consolas,monospace;font-size:6pt;overflow-wrap:anywhere}
 .inv-signs{flex:1;display:flex;gap:12px;min-width:0}
 .inv-signs div{flex:1;min-width:0;border-top:1px solid #aaa098;padding-top:5px;text-align:center;font-size:6.5pt;color:#655d58;line-height:1.7}
-.inv-foot{border-top:1px solid #d8cbc1;margin-top:10px;padding-top:6px;text-align:center;font-size:6.8pt;line-height:1.9;color:#655d58;break-inside:avoid;overflow-wrap:anywhere}
+.inv-foot{border-top:1px solid #d8cbc1;margin-top:6px;padding-top:4px;text-align:center;font-size:6.8pt;line-height:1.55;color:#655d58;break-inside:avoid;overflow-wrap:anywhere}
 .inv-foot b{font-weight:600}
-.inv-foot .l2{font-size:7pt;margin-top:7px;color:#713520;font-weight:600}
+.inv-foot .l2{font-size:7pt;margin-top:3px;color:#713520;font-weight:600}
 .inv-foot .l2 span{display:block;font-size:6pt;font-weight:400;color:#776c64}
 .inv-void{position:absolute;inset:0;display:grid;place-items:center;font-size:46pt;color:rgba(190,0,0,.15);font-weight:800;transform:rotate(-18deg);pointer-events:none;z-index:2}
 .inv.thermal{max-width:72mm;padding:2mm;font-size:8pt;color:#111}
@@ -692,6 +703,7 @@ const REPORT_CSS = PRINT_FONT + `
 .reg .rbox .s{font-size:7pt;color:#666;min-height:9pt}
 .reg .rnote{font-size:8pt;color:#555;margin-top:3px;line-height:1.5}
 .reg thead{display:table-header-group}
+.reg tfoot{display:table-row-group}
 .reg tr{break-inside:avoid}
 `;
 
@@ -772,8 +784,9 @@ function renderInvoices() {
 }
 const statValue = value => {
   const text = String(value);
-  return text.endsWith(' ر.ق')
-    ? `<bdi class="stat-number" dir="ltr">${esc(text.slice(0, -4))}</bdi><span class="stat-currency">ر.ق</span>`
+  const cur = ' ' + t('ر.ق');
+  return text.endsWith(cur)
+    ? `<bdi class="stat-number" dir="ltr">${esc(text.slice(0, -cur.length))}</bdi><span class="stat-currency">${t('ر.ق')}</span>`
     : `<bdi class="stat-number" dir="ltr">${esc(text)}</bdi>`;
 };
 const stat = (lbl, val, sm, cls) => `<div class="stat ${cls}"><div class="lbl">${lbl}</div><div class="val">${statValue(val)}</div><div class="sm">${sm || '&nbsp;'}</div></div>`;
@@ -856,7 +869,7 @@ function registerHTML(list, from, to) {
         <td>${money(v.subtotal)}</td><td>${money(v.discount)}</td><td>${money(v.delivery)}</td>
         <td><b>${money(v.total)}</b></td>
         <td>${v.type === 'cash' ? 'نقداً' : (v.paid ? 'آجل — محصّل' : 'على الحساب')}</td>
-        <td>${v.status === 'void' ? 'ملغاة' : 'سارية'}</td><td>${esc(v.hash || '')}</td>
+        <td>${v.status === 'void' ? 'ملغاة' : 'سارية'}</td><td>${ltr(v.hash || '')}</td>
       </tr>`).join('')}</tbody>
       <tfoot><tr>
         <td colspan="6">الإجماليات (الفواتير السارية: ${act.length})</td>
@@ -885,12 +898,12 @@ $('#btnExportCsv').addEventListener('click', () => {
   if (!list.length) return toast(t('لا توجد فواتير للتصدير'), 'err');
   const q = s => `"${String(s ?? '').replace(/"/g, '""')}"`;
   const head = ['رقم الفاتورة', 'التاريخ', 'الوقت', 'العميل', 'الجوال', 'الأصناف',
-    'المجموع', 'الخصم', 'التوصيل', 'الضريبة', 'الإجمالي', 'نوع الدفع', 'الحالة', 'معرّف الفاتورة', 'بصمة التحقق'];
+    'المجموع', 'الخصم', 'التوصيل', 'الضريبة', 'الإجمالي', 'نوع الدفع', 'الحالة', 'معرّف الفاتورة', 'بصمة التحقق'].map(t);
   const rows = list.map(v => [v.no, v.date, v.time, v.customer, v.phone,
     v.items.map(i => `${i.ar} ×${i.qty}`).join(' + '),
     money(v.subtotal), money(v.discount), money(v.delivery), money(v.vat || 0), money(v.total),
-    v.type === 'cash' ? 'نقداً' : (v.paid ? 'آجل محصّل' : 'على الحساب'),
-    v.status === 'void' ? 'ملغاة' : 'سارية', v.uid, v.hash].map(q).join(','));
+    t(v.type === 'cash' ? 'نقداً' : (v.paid ? 'آجل محصّل' : 'على الحساب')),
+    t(v.status === 'void' ? 'ملغاة' : 'سارية'), v.uid, v.hash].map(q).join(','));
   downloadBlob('﻿sep=,\r\n' + [head.map(q).join(','), ...rows].join('\r\n'),
     `فواتير-${todayISO()}.csv`, 'text/csv;charset=utf-8');
   toast(t('تم تصدير الملف — يفتح مباشرة في Excel'), 'ok');
@@ -908,8 +921,8 @@ function renderProducts() {
       <td>${catLabel(p.cat)}</td>
       <td class="num">${money(p.price)}</td>
       <td class="num">${p.weight || '—'}</td>
-      <td>${esc(p.state) || '—'}</td>
-      <td>${esc(p.origin) || '—'}</td>
+      <td>${esc(t(p.state)) || '—'}</td>
+      <td>${esc(t(p.origin)) || '—'}</td>
       <td>${p.active ? `<span class="badge b-cash">${t('نعم')}</span>` : `<span class="badge b-void">${t('لا')}</span>`}</td>
       <td class="acts">
         <button class="btn btn-sm" data-p="${p.id}" data-a="edit">${t('تعديل')}</button>
@@ -1115,8 +1128,8 @@ $('#btnReportCsv').addEventListener('click', () => {
   const rows = r.items.map(([n, e], i) => [i + 1, n, catLabel(e.cat), e.qty, money(e.val),
     (r.itemsValue ? e.val / r.itemsValue * 100 : 0).toFixed(1) + '%'].map(q).join(','));
   downloadBlob('\ufeffsep=,\r\n' +
-    [['#', 'الصنف', 'القسم', 'الكمية المباعة', 'القيمة (ر.ق)', 'النسبة'].map(q).join(','), ...rows,
-     ['', 'الإجمالي', '', r.units, money(r.itemsValue), '100%'].map(q).join(',')].join('\r\n'),
+    [['#', 'الصنف', 'القسم', 'الكمية المباعة', 'القيمة (ر.ق)', 'النسبة'].map(t).map(q).join(','), ...rows,
+     ['', t('الإجمالي'), '', r.units, money(r.itemsValue), '100%'].map(q).join(',')].join('\r\n'),
     `تقرير-الأصناف-${$('#rFrom').value || 'الكل'}_${$('#rTo').value || todayISO()}.csv`,
     'text/csv;charset=utf-8');
   toast(t('تم تصدير تقرير الأصناف'), 'ok');
@@ -1265,7 +1278,7 @@ $('#btnSyncSave').addEventListener('click', async () => {
 });
 $('#btnSyncNow').addEventListener('click',()=>Sync.run(true).then(fillSettings));
 $('#btnSyncTest').addEventListener('click',async()=>{
-  try{await Auth.call('authSessions:me');toast('الاتصال بالحساب سليم','ok');}catch{toast('تعذّر الاتصال. سجّل الدخول مجددًا أو تحقق من الإنترنت.','err');}
+  try{await Auth.call('authSessions:me');toast(t('الاتصال بالحساب سليم'),'ok');}catch{toast(t('تعذّر الاتصال. سجّل الدخول مجددًا أو تحقق من الإنترنت.'),'err');}
 });
 
 $('#btnBackup').addEventListener('click', () => {
@@ -1368,6 +1381,8 @@ function tick() {
   Lock.guard();                       // يقفل الشاشة إن كان هناك رمز دخول
   I18n.set(db.settings.lang || 'ar');
   applyBranding();
+  $('#pageTitle').textContent = t(pageCopy.pos[0]);
+  $('#pageDescription').textContent = t(pageCopy.pos[1]);
   renderCatTabs();
   renderProdGrid();
   clearCart();

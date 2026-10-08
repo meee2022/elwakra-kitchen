@@ -83,12 +83,15 @@ const Sync = (function () {
       db.settings.sync.lastError = '';
       save();
       render('ok');
-      if (manual) toast(`تمت مزامنة ${queue.length} فاتورة`, 'ok');
+      if (manual) toast(I18n.t2('تمت مزامنة {0} فاتورة', queue.length), 'ok');
     } catch (e) {
-      db.settings.sync.lastError = e.message;
+      // A number already used by a different invoice in the cloud: say so plainly, it needs a person.
+      db.settings.sync.lastError = e.message.includes('UID_CONFLICT')
+        ? t('رقم فاتورة مستخدم في السحابة لفاتورة مختلفة — راجع رقم الفاتورة القادمة في الإعدادات.')
+        : e.message;
       save();
       render('error');
-      if (manual) toast('تعذّرت المزامنة: ' + e.message, 'err');
+      if (manual) toast(t('تعذّرت المزامنة: ') + e.message, 'err');
     }
   }
 
@@ -102,17 +105,17 @@ const Sync = (function () {
     const n = pending().length;
     const s = state || (inFlight ? 'working' : (!navigator.onLine ? 'offline' : (n ? 'pending' : 'ok')));
     const map = {
-      ok:      ['متزامن', 's-ok'],
-      pending: [`في انتظار الرفع: ${n}`, 's-pending'],
-      working: ['جاري الرفع…', 's-pending'],
-      offline: [n ? `بدون إنترنت — ${n} في الانتظار` : 'بدون إنترنت', 's-off'],
-      error:   ['تعذّرت المزامنة', 's-err']
+      ok:      [t('متزامن'), 's-ok'],
+      pending: [t('في انتظار الرفع: ') + n, 's-pending'],
+      working: [t('جاري الرفع…'), 's-pending'],
+      offline: [n ? I18n.t2('بدون إنترنت — {0} في الانتظار', n) : t('بدون إنترنت'), 's-off'],
+      error:   [t('تعذّرت المزامنة'), 's-err']
     };
     const [text, cls] = map[s] || map.ok;
     el.className = 'sync-badge ' + cls;
     el.textContent = text;
     el.title = db.settings.sync.lastError || (db.settings.sync.lastOk
-      ? 'آخر مزامنة ناجحة: ' + new Date(db.settings.sync.lastOk).toLocaleString('ar-QA') : '');
+      ? t('آخر مزامنة ناجحة: ') + new Date(db.settings.sync.lastOk).toLocaleString(I18n.get() === 'en' ? 'en-GB' : 'ar-QA') : '');
   }
 
   /** اختبار الاتصال بالنشرة قبل التفعيل */

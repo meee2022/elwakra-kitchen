@@ -49,6 +49,17 @@ describe("account access controls",()=>{
     await expect(t.mutation(api.invoices.push,{...args,invoices:[{...invoice,status:"void"}]})).rejects.toThrow("FORBIDDEN");
     expect((await t.run(ctx=>ctx.db.query("invoices").collect())).length).toBe(1);
   });
+  it("refuses to overwrite a different invoice that reuses a number, yet still lets its state change",async()=>{
+    const {t,login}=await setup();
+    await t.mutation(api.invoices.push,{token:login.token,invoices:[invoice]});
+    // A second device issuing its own invoice under the same number must not replace the first.
+    const clash={...invoice,time:"13:30",customer:"Someone else",hash:"OTHERHASH"};
+    await expect(t.mutation(api.invoices.push,{token:login.token,invoices:[clash]})).rejects.toThrow("UID_CONFLICT");
+    // The same invoice being cancelled is a legitimate update.
+    await t.mutation(api.invoices.push,{token:login.token,invoices:[{...invoice,status:"void"}]});
+    const row=await t.run(ctx=>ctx.db.query("invoices").unique());
+    expect(row?.customer).toBe("Test");expect(row?.status).toBe("void");
+  });
   it("checks amounts on the server",async()=>{
     const {t,login}=await setup("cashier");
     await expect(t.mutation(api.invoices.push,{token:login.token,invoices:[{...invoice,total:999}]})).rejects.toThrow("Invalid invoice totals");

@@ -20,8 +20,10 @@ Status: implemented and locally tested, not deployed. Convex CLI currently repor
 - Server API rejects unauthenticated requests and shared SYNC_KEY credentials, including direct requests to reports and wipe functions.
 - Sessions use random 256-bit tokens, stored as hashes on the server, with an 8-hour absolute expiry. Passwords are scrypt hashes with per-account salts. Public sign-up and role selection are not available.
 - Tokens live in sessionStorage rather than localStorage. Logout revokes the current session on the server when online and locks other open tabs in the same origin. When offline, local logout occurs immediately and remote revocation cannot complete; the token expires at its normal deadline.
-- Login and reopening/reloading the app require a network validation. An already-open cashier screen continues to work offline until expiry. An unsaved cart is retained in sessionStorage on lock and restored only after the same account signs in again.
+- Login requires the network. Reloading validates the session with the server when it is reachable; if the server cannot be reached, the app resumes on the stored unexpired session so an outage does not stop the till (a session the server rejects is always dropped). An already-open cashier screen continues to work offline until expiry. An unsaved cart is retained in sessionStorage on lock and restored only after the same account signs in again.
 - Global and per-account login-attempt limits mitigate guessing. Repeated failed attempts temporarily lock the username; there is no public account reset workflow.
+
+- An upload whose number is already held by a different invoice (different fingerprint) is rejected with UID_CONFLICT rather than overwriting it; cancelling or collecting the same invoice still updates it.
 
 ## Scope and limitations
 

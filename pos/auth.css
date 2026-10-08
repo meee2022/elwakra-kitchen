@@ -1,20 +1,113 @@
 @import url('fonts/cairo.css');
+
+/* Until an account session is validated, nothing but the gate is rendered. */
 html.auth-pending body>:not(#authGate){display:none!important}
-#authGate{font-family:'Cairo',Tahoma,sans-serif;min-height:100dvh;display:grid;place-items:center;padding:24px;background:#f7f4f0;color:#30251f;direction:rtl;box-sizing:border-box}
+
+/* ── Sign-in gate ─────────────────────────────────────────────
+   Self-contained tokens: the dashboard page does not load app.css. */
+#authGate{
+  --a-primary:oklch(47% .125 35); --a-primary-deep:oklch(33% .08 35); --a-primary-dark:oklch(40% .11 35);
+  --a-accent:oklch(82% .07 80);
+  --a-bg:oklch(93% .016 66); --a-card:#fff; --a-field:oklch(98.5% .006 66);
+  --a-border:oklch(83.5% .026 66); --a-ink:oklch(28% .019 50); --a-muted:oklch(49% .021 55);
+  --a-danger:oklch(48% .16 27); --a-danger-bg:oklch(95% .03 27);
+  font-family:'Cairo',Tahoma,sans-serif; direction:rtl; color:var(--a-ink);
+  min-height:100dvh; display:grid; place-items:center; padding:24px; box-sizing:border-box;
+  background:
+    radial-gradient(60rem 36rem at 100% 0%, oklch(88% .04 60 / .7), transparent 60%),
+    var(--a-bg);
+}
 #authGate *{box-sizing:border-box}
-.auth-box{width:100%;max-width:420px;background:#fdfbf9;border:1px solid #e5dcd4;border-radius:16px;padding:28px}
-.auth-brand{font-size:13px;color:#88452f;margin-bottom:14px;font-weight:700}
-.auth-box h1{font-size:24px;margin:0 0 8px;line-height:1.6}
-.auth-box p{font-size:13px;color:#695e56;line-height:1.9;margin:0 0 22px}
-.auth-box label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px}
-.auth-box input{width:100%;min-height:46px;padding:10px 12px;font:16px 'Cairo',sans-serif;border:1px solid #d6c8bc;border-radius:8px;background:#fdfbf9;color:#30251f}
-.auth-box button{min-height:46px;padding:10px 16px;border-radius:8px;font:600 14px 'Cairo',sans-serif;cursor:pointer}
-.auth-submit{width:100%;margin-top:18px;background:#923f29;color:#fff;border:0}
-.auth-submit:disabled{opacity:.6;cursor:wait}
-.auth-password{display:flex;gap:6px}.auth-password input{min-width:0;flex:1}.auth-password button{border:1px solid #d6c8bc;background:transparent;color:#5b4338;font-size:12px}
-.auth-error{min-height:24px;font-size:13px;color:#a32922;line-height:1.8;margin-top:12px}
-#authGate :focus-visible{outline:3px solid #923f29;outline-offset:3px}
+
+.auth-card{
+  width:100%; max-width:860px; display:grid; grid-template-columns:minmax(0,5fr) minmax(0,6fr);
+  background:var(--a-card); border-radius:22px; overflow:hidden;
+  box-shadow:0 1px 2px oklch(33% .08 35 / .08), 0 24px 60px -24px oklch(33% .08 35 / .38);
+  animation:authIn .45s cubic-bezier(.16,1,.3,1);
+}
+@keyframes authIn{from{opacity:0; transform:translateY(10px)}}
+@media (prefers-reduced-motion:reduce){.auth-card{animation:none}}
+
+/* Brand panel */
+.auth-side{
+  position:relative; padding:38px 32px; color:#fff; display:flex; flex-direction:column; gap:6px;
+  background:
+    radial-gradient(22rem 16rem at 110% -10%, oklch(82% .07 80 / .32), transparent 62%),
+    radial-gradient(18rem 14rem at -10% 110%, oklch(28% .06 35 / .55), transparent 65%),
+    repeating-linear-gradient(135deg, oklch(100% 0 0 / .035) 0 2px, transparent 2px 14px),
+    linear-gradient(150deg, var(--a-primary-dark), var(--a-primary) 55%, var(--a-primary-deep));
+}
+.auth-mark{
+  width:58px; height:58px; border-radius:16px; display:grid; place-items:center; margin-bottom:auto;
+  background:oklch(24% .03 40); border:1px solid oklch(82% .07 80 / .55);
+  font-size:15px; font-weight:700; letter-spacing:1.5px;
+  box-shadow:0 10px 24px -10px oklch(15% .03 40 / .8);
+}
+.auth-side-name{font-size:25px; font-weight:800; line-height:1.45; letter-spacing:-.3px; margin-top:42px; text-wrap:balance}
+.auth-side-en{font-size:12.5px; font-weight:600; letter-spacing:.3px; opacity:.86}
+.auth-side-tag{
+  margin-top:20px; padding-top:14px; border-top:1px solid oklch(100% 0 0 / .2);
+  font-size:11.5px; font-weight:600; color:var(--a-accent);
+}
+
+/* Form */
+.auth-box{padding:38px 34px 30px; display:flex; flex-direction:column}
+.auth-box h1{font-size:23px; font-weight:800; margin:0 0 22px; line-height:1.4; letter-spacing:-.3px}
+.auth-box h1 span{display:block; font-size:12.5px; font-weight:600; color:var(--a-muted); letter-spacing:.2px}
+.auth-box label{display:flex; align-items:baseline; gap:8px; font-size:13px; font-weight:700; margin:0 0 6px}
+.auth-box label span{font-size:11px; font-weight:500; color:var(--a-muted)}
+.auth-box input{
+  width:100%; min-height:48px; padding:10px 14px; margin-bottom:16px;
+  font:500 16px 'Cairo',sans-serif; color:var(--a-ink);
+  background:var(--a-field); border:1px solid var(--a-border); border-radius:11px;
+  transition:border-color .18s, box-shadow .18s, background .18s;
+}
+.auth-box input:hover{border-color:oklch(72% .04 60)}
+.auth-box input:focus{outline:none; background:#fff; border-color:var(--a-primary); box-shadow:0 0 0 4px oklch(47% .125 35 / .13)}
+
+/* The show/hide control lives inside the field rather than beside it */
+.auth-password{position:relative}
+.auth-password input{padding-inline-end:108px}
+.auth-password button{
+  position:absolute; inset-inline-end:6px; top:6px; height:36px; padding:0 10px;
+  border:0; border-radius:8px; background:transparent; color:var(--a-primary);
+  font:700 11.5px 'Cairo',sans-serif; cursor:pointer; transition:background .15s;
+}
+.auth-password button:hover{background:oklch(95% .03 40)}
+
+.auth-error{font-size:12.5px; font-weight:600; line-height:1.7; color:var(--a-danger)}
+.auth-error:not(:empty){background:var(--a-danger-bg); border-radius:10px; padding:9px 12px; margin-bottom:14px}
+
+.auth-submit{
+  width:100%; min-height:50px; border:0; border-radius:12px; cursor:pointer;
+  background:var(--a-primary); color:#fff; font:700 15px 'Cairo',sans-serif;
+  box-shadow:0 10px 22px -12px oklch(47% .125 35 / .9);
+  transition:background .18s, transform .12s, box-shadow .18s;
+}
+.auth-submit:hover{background:var(--a-primary-dark)}
+.auth-submit:active{transform:translateY(1px); box-shadow:0 5px 12px -8px oklch(47% .125 35 / .9)}
+.auth-submit:disabled{opacity:.6; cursor:wait; transform:none}
+
+.auth-note{margin:18px 0 0; padding-top:14px; border-top:1px solid oklch(91% .014 66); font-size:11px; line-height:1.8; color:var(--a-muted)}
+.auth-note span{display:block}
+
+#authGate :focus-visible{outline:3px solid var(--a-primary); outline-offset:3px}
+#authGate input:focus-visible{outline:none}
+
+@media(max-width:720px){
+  #authGate{padding:14px; place-items:start center}
+  .auth-card{grid-template-columns:1fr; max-width:440px; border-radius:18px}
+  .auth-side{padding:20px 22px; flex-direction:row; flex-wrap:wrap; align-items:center; gap:4px 14px}
+  .auth-mark{width:46px; height:46px; border-radius:13px; margin:0; font-size:12.5px}
+  .auth-side-name{font-size:17px; margin:0; flex:1; min-width:0}
+  .auth-side-name br{display:none}
+  .auth-side-en{flex-basis:100%; font-size:11px}
+  .auth-side-tag{display:none}
+  .auth-box{padding:24px 22px 22px}
+  .auth-box h1{font-size:20px; margin-bottom:18px}
+}
+
+/* ── Signed-in chrome and role visibility ── */
 .auth-user{font-size:11px;color:var(--muted);margin-inline-start:8px}
 html[data-role=cashier] #nav button:not([data-page=pos]),html[data-role=cashier] .dashboard-link{display:none!important}
 html[data-role=cashier] #nav{display:flex}
-@media(max-width:480px){#authGate{padding:16px}.auth-box{padding:22px}.auth-box h1{font-size:22px}}

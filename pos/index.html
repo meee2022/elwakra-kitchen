@@ -9,8 +9,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="app.css?v=18">
-<link rel="stylesheet" href="auth.css?v=18">
+<link rel="stylesheet" href="app.css?v=20">
+<link rel="stylesheet" href="auth.css?v=20">
 </head>
 <body>
 
@@ -41,7 +41,7 @@
   <div class="clock" id="clock"></div>
 </header>
 
-<nav class="nav" id="nav" aria-label="التنقل الرئيسي">
+<nav class="nav" id="nav" aria-label="التنقل الرئيسي" data-i18n-aria="التنقل الرئيسي">
   <button data-page="pos" class="active" data-i18n="نقطة البيع">نقطة البيع</button>
   <button data-page="invoices" data-i18n="الفواتير">الفواتير</button>
   <button data-page="products" data-i18n="الأصناف">الأصناف</button>
@@ -53,26 +53,26 @@
 <main>
 <div class="workspace-heading">
   <div><div class="eyebrow" data-i18n="مطابخ الجنوب · مساحة العمل">مطابخ الجنوب · مساحة العمل</div><h2 id="pageTitle">نقطة البيع</h2><p id="pageDescription">اختَر الأصناف، راجع الطلب، وأصدر الفاتورة.</p></div>
-  <a class="dashboard-link" href="dashboard.html" target="_blank" rel="noopener">متابعة المبيعات <span aria-hidden="true">↗</span></a>
+  <a class="dashboard-link" href="dashboard.html" target="_blank" rel="noopener"><bdi data-i18n="متابعة المبيعات">متابعة المبيعات</bdi> <span aria-hidden="true">↗</span></a>
 </div>
 
 <!-- ══════════════ نقطة البيع ══════════════ -->
 <section class="page active" id="page-pos">
   <div class="pos">
-    <div class="pos-switch" role="group" aria-label="عرض نقطة البيع">
+    <div class="pos-switch" role="group" aria-label="عرض نقطة البيع" data-i18n-aria="عرض نقطة البيع">
       <button type="button" data-pos-view="catalog" aria-pressed="true" data-i18n="الأصناف">الأصناف</button>
-      <button type="button" data-pos-view="cart" aria-pressed="false">الفاتورة <span id="mobileCartCount" aria-live="polite">0</span><span id="mobileCartTotal">0.00 ر.ق</span></button>
+      <button type="button" data-pos-view="cart" aria-pressed="false"><bdi data-i18n="الفاتورة">الفاتورة</bdi> <span id="mobileCartCount" aria-live="polite">0</span><span id="mobileCartTotal">0.00 ر.ق</span></button>
     </div>
     <div class="catalog">
       <div class="catalog-search"><label for="prodSearch" data-i18n="قائمة الأصناف">قائمة الأصناف</label><input type="search" id="prodSearch" placeholder="ابحث باسم الصنف بالعربي أو الإنجليزي…" data-i18n-ph="ابحث باسم الصنف بالعربي أو الإنجليزي…"></div>
-      <div class="catalog-toolbar"><div class="cat-tabs" id="catTabs" aria-label="أقسام الأصناف"></div><span class="muted" id="productCount" aria-live="polite"></span></div>
+      <div class="catalog-toolbar"><div class="cat-tabs" id="catTabs" aria-label="أقسام الأصناف" data-i18n-aria="أقسام الأصناف"></div><span class="muted" id="productCount" aria-live="polite"></span></div>
       <div class="prod-grid" id="prodGrid"></div>
     </div>
 
     <div class="cart">
       <div class="card">
         <div class="card-h">
-          <h3>الفاتورة الحالية <span id="cartCount" class="cart-count">0</span></h3>
+          <h3><bdi data-i18n="الفاتورة الحالية">الفاتورة الحالية</bdi> <span id="cartCount" class="cart-count">0</span></h3>
           <span class="muted right" id="nextNoLabel"></span>
         </div>
 
@@ -89,7 +89,7 @@
 
         <div class="cart-items" id="cartItems"></div>
 
-        <details class="invoice-details"><summary>الجوال والخصم والتوصيل</summary><div class="card-b">          <div class="grid2">
+        <details class="invoice-details"><summary data-i18n="الجوال والخصم والتوصيل">الجوال والخصم والتوصيل</summary><div class="card-b">          <div class="grid2">
             
             <div><label class="f" for="cPhone" data-i18n="رقم الجوال">رقم الجوال</label><input type="tel" id="cPhone" placeholder="اختياري" data-i18n-ph="اختياري"></div>
           </div>
@@ -323,11 +323,11 @@
         </div>
         <div class="card-b">
           <p class="muted" style="margin-top:0; font-size:13.5px" data-i18n="نقطة البيع تشتغل محلياً دائماً. لما المزامنة تكون مفعّلة، الفواتير بتترفع تلقائياً لقاعدة البيانات السحابية عشان تتابعها من الموبايل ويبقى عندك نسخة برّه الجهاز.">نقطة البيع تشتغل محلياً دائماً. لما المزامنة تكون مفعّلة، الفواتير بتترفع تلقائياً لقاعدة البيانات السحابية عشان تتابعها من الموبايل ويبقى عندك نسخة برّه الجهاز.</p>
-          <p>المزامنة محمية بحسابك الحالي، ولا تحتاج مفتاح اتصال.</p>
+          <p data-i18n="المزامنة محمية بحسابك الحالي، ولا تحتاج مفتاح اتصال.">المزامنة محمية بحسابك الحالي، ولا تحتاج مفتاح اتصال.</p>
           <input type="hidden" id="sSyncUrl"><input type="hidden" id="sSyncKey">
           <div class="row" style="margin-top:12px">
             <label class="row" style="gap:6px; font-weight:600; font-size:13.5px">
-              <input type="checkbox" id="sSyncOn" style="width:auto"> تفعيل المزامنة التلقائية
+              <input type="checkbox" id="sSyncOn" style="width:auto"> <bdi data-i18n="تفعيل المزامنة التلقائية">تفعيل المزامنة التلقائية</bdi>
             </label>
             <button class="btn right" id="btnSyncTest" data-i18n="اختبار الاتصال">اختبار الاتصال</button>
             <button class="btn btn-primary" id="btnSyncSave" data-i18n="حفظ وتفعيل المزامنة">حفظ وتفعيل المزامنة</button>
@@ -412,12 +412,12 @@
 
 <div id="toast" role="status" aria-live="polite"></div>
 
-<script src="auth.js?v=18"></script>
-<script src="i18n.js?v=18"></script>
-<script src="lock.js?v=18"></script>
-<script src="data.js?v=18"></script>
-<script src="qr.js?v=18"></script>
-<script src="sync.js?v=18"></script>
-<script src="app.js?v=18"></script>
+<script src="auth.js?v=20"></script>
+<script src="i18n.js?v=20"></script>
+<script src="lock.js?v=20"></script>
+<script src="data.js?v=20"></script>
+<script src="qr.js?v=20"></script>
+<script src="sync.js?v=20"></script>
+<script src="app.js?v=20"></script>
 </body>
 </html>

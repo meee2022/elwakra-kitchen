@@ -205,6 +205,24 @@ const I18N = {
   'لو نسيت الرمز: استعد نسخة احتياطية — ملف النسخة لا يحتوي الرموز، فيفتح النظام بلا قفل. النظام يعمل داخل المتصفح، فالقفل يمنع التصفّح العابر ولا يحمي من شخص تقني يملك الجهاز.':
     'If you forget the passcode: restore a backup — the backup file holds no passcodes, so the system opens unlocked. The system runs inside the browser, so the lock stops casual browsing; it does not protect against a technical person who has the device.',
 
+  /* ── قيم بيانات الأصناف والتصدير والحسابات ── */
+  'محلي': 'Local',
+  'كندا': 'Canada',
+  'استرالي': 'Australian',
+  'برازيلي': 'Brazilian',
+  'هندي': 'Indian',
+  'المجموع': 'Subtotal',
+  'الضريبة': 'VAT',
+  'معرّف الفاتورة': 'Invoice UID',
+  'بصمة التحقق': 'Verification hash',
+  'التنقل الرئيسي': 'Main navigation',
+  'عرض نقطة البيع': 'Point of sale view',
+  'أقسام الأصناف': 'Item categories',
+  'المزامنة محمية بحسابك الحالي، ولا تحتاج مفتاح اتصال.': 'Sync is protected by your current account; no connection key is needed.',
+  'سجّل الدخول أولًا': 'Sign in first',
+  'الاتصال بالحساب سليم': 'Account connection is working',
+  'تعذّر الاتصال. سجّل الدخول مجددًا أو تحقق من الإنترنت.': 'Could not connect. Sign in again or check the internet.',
+
   /* ── الإعدادات ── */
   'بيانات المنشأة (تظهر على كل فاتورة إلكترونية)': 'Business Details (shown on every invoice)',
   'الاسم التجاري بالعربي': 'Trade Name (Arabic)',
@@ -253,6 +271,9 @@ const I18N = {
   'حفظ وتفعيل المزامنة': 'Save & Enable Sync',
   'مزامنة الآن': 'Sync Now',
   'متزامن': 'Synced',
+  'رقم فاتورة مستخدم في السحابة لفاتورة مختلفة — راجع رقم الفاتورة القادمة في الإعدادات.': 'This invoice number is already used in the cloud by a different invoice — check the next invoice number in Settings.',
+  'تمت مزامنة {0} فاتورة': '{0} invoice(s) synced',
+  'بدون إنترنت — {0} في الانتظار': 'Offline — {0} waiting',
   'جاري الرفع…': 'Uploading…',
   'بدون إنترنت': 'Offline',
   'تعذّرت المزامنة': 'Sync failed',
