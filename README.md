@@ -55,7 +55,7 @@ python -m http.server 8777 --directory pos
 ```bash
 npm install
 npx convex dev          # ينشر الدوال على نشرتك
-npx convex env set SYNC_KEY "<مفتاح-قوي-من-اختيارك>"
+python scripts/create-account.py admin manager      # ثم حساب cashier بنفس الطريقة
 ```
 
 ثم أدخل رابط النشرة والمفتاح في *الإعدادات ← المزامنة السحابية*.
