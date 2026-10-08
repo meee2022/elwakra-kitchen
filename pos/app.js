@@ -177,6 +177,7 @@ const pageCopy = {
   invoices: ['الفواتير', 'راجع الفواتير الصادرة وتابع التحصيل من مكان واحد.'],
   products: ['الأصناف والأسعار', 'نظّم قائمة المطعم وحدّث الأسعار وتوافر الأصناف.'],
   reports: ['تقارير المبيعات', 'تابع أداء المبيعات والأصناف الأكثر طلبًا خلال الفترة.'],
+  accounts: ['الحسابات', 'إضافة الكاشير والمديرين، تغيير كلمات المرور، وإيقاف الحسابات.'],
   settings: ['الإعدادات', 'بيانات المنشأة، الطباعة، والنسخ الاحتياطي والمزامنة.']
 };
 $('#nav button.active').setAttribute('aria-current', 'page');
@@ -200,7 +201,7 @@ $('#nav').addEventListener('click', e => {
   $('#pageTitle').textContent = t(copy[0]);
   $('#pageDescription').textContent = t(copy[1]);
   $$('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + b.dataset.page));
-  ({ invoices: renderInvoices, products: renderProducts, reports: renderReports, settings: fillSettings }[b.dataset.page] || (() => {}))();
+  ({ invoices: renderInvoices, products: renderProducts, reports: renderReports, accounts: loadAccounts, settings: fillSettings }[b.dataset.page] || (() => {}))();
   measureAppbar();
 });
 
@@ -1336,6 +1337,81 @@ $('#btnWipe').addEventListener('click', () => {
   setTimeout(() => location.reload(), 250);
 });
 
+/* ══════════════ الحسابات (للمدير) ══════════════ */
+// One form serves the four changes; the server confirms every one with the manager's own password.
+let acct = { mode: 'add', username: '' };   // add | password | disable | enable
+let acctList = [];
+const ACCT_ERRORS = {
+  WRONG_PASSWORD: 'كلمة مرورك الحالية غير صحيحة.',
+  TOO_MANY_ATTEMPTS: 'محاولات كثيرة. انتظر 15 دقيقة ثم حاول مرة أخرى.',
+  USERNAME_TAKEN: 'اسم المستخدم مستخدم بالفعل.',
+  INVALID_USERNAME: 'اسم المستخدم: من 3 إلى 40 حرفاً إنجليزياً صغيراً أو رقماً.',
+  WEAK_PASSWORD: 'كلمة المرور يجب ألا تقل عن 8 حروف.',
+  NOT_FOUND: 'الحساب غير موجود.',
+  CANNOT_DISABLE_SELF: 'لا يمكنك إيقاف حسابك أنت.'
+};
+function paintAcct() {
+  const { mode, username } = acct;
+  $('#acctTitle').textContent = mode === 'add' ? t('إضافة حساب جديد')
+    : t({ password: 'تغيير كلمة مرور الحساب:', disable: 'إيقاف الحساب:', enable: 'تفعيل الحساب:' }[mode]) + ' ' + username;
+  $('#acctSave').textContent = t({ add: 'إضافة الحساب', password: 'تغيير كلمة المرور', disable: 'إيقاف الحساب', enable: 'تفعيل الحساب' }[mode]);
+}
+function setAcct(mode, username) {
+  acct = { mode, username: username || '' };
+  $('#acctForm').reset();
+  $$('#acctForm [data-for]').forEach(el => { el.hidden = !el.dataset.for.split(' ').includes(mode); });
+  $('#acctHint').hidden = mode !== 'disable';
+  $('#acctCancel').hidden = mode === 'add';
+  paintAcct();
+}
+function renderAccounts() {
+  const me = Auth.profile().username;
+  $('#acctBody').innerHTML = acctList.map(a => `<tr>
+    <td><bdi dir="ltr">${esc(a.username)}</bdi>${a.username === me ? ` <span class="muted">(${t('أنت')})</span>` : ''}</td>
+    <td>${t(a.role === 'manager' ? 'مدير' : 'كاشير')}</td>
+    <td><span class="badge ${a.disabled ? 'b-void' : 'b-cash'}">${t(a.disabled ? 'موقوف' : 'مفعّل')}</span></td>
+    <td class="acts"><button class="btn btn-sm" type="button" data-acct="password" data-user="${esc(a.username)}">${t('تغيير كلمة المرور')}</button>${
+      a.username === me ? '' : `<button class="btn btn-sm" type="button" data-acct="${a.disabled ? 'enable' : 'disable'}" data-user="${esc(a.username)}">${t(a.disabled ? 'تفعيل' : 'إيقاف')}</button>`}</td>
+  </tr>`).join('');
+}
+async function loadAccounts() {
+  try { acctList = await Auth.call('authSessions:accounts'); renderAccounts(); }
+  catch (e) { toast(t('تعذّر تحميل الحسابات: ') + e.message, 'err'); }
+}
+$('#acctBody').addEventListener('click', e => {
+  const b = e.target.closest('[data-acct]');
+  if (!b) return;
+  setAcct(b.dataset.acct, b.dataset.user);
+  $(b.dataset.acct === 'password' ? '#acctNew' : '#acctMine').focus();
+});
+$('#acctCancel').addEventListener('click', () => setAcct('add'));
+$('#acctForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const { mode, username } = acct, fresh = $('#acctNew').value, password = $('#acctMine').value;
+  if (mode === 'add' || mode === 'password') {
+    if (fresh.length < 8) return toast(t(ACCT_ERRORS.WEAK_PASSWORD), 'err');
+    if (fresh !== $('#acctNew2').value) return toast(t('كلمتا المرور غير متطابقتين.'), 'err');
+  }
+  if (!password) return toast(t('اكتب كلمة مرورك الحالية للتأكيد.'), 'err');
+  $('#acctSave').disabled = true;
+  try {
+    if (mode === 'add') await Auth.call('auth:createAccount', { password, username: $('#acctUser').value, role: $('#acctRole').value, newPassword: fresh }, 'action');
+    else if (mode === 'password') await Auth.call('auth:setPassword', { password, username, newPassword: fresh }, 'action');
+    else await Auth.call('auth:setDisabled', { password, username, disabled: mode === 'disable' }, 'action');
+    // Changing your own password closes your sessions too: back to the sign-in screen.
+    if (mode === 'password' && username === Auth.profile().username) return location.reload();
+    setAcct('add');
+    toast(t('تم الحفظ.'), 'ok');
+    loadAccounts();
+  } catch (err) {
+    const code = Object.keys(ACCT_ERRORS).find(k => err.message.includes(k));
+    toast(code ? t(ACCT_ERRORS[code]) : t('تعذّر الحفظ: ') + err.message, 'err');
+  } finally {
+    $('#acctSave').disabled = false;
+  }
+});
+setAcct('add');
+
 /* ══════════════ النوافذ المنبثقة ══════════════ */
 function closeModals() { $$('.modal').forEach(m => m.classList.remove('open')); }
 document.addEventListener('click', e => {
@@ -1363,7 +1439,7 @@ function rerenderAll() {
   }
   renderCatTabs(); renderProdGrid(); renderCart();
   $('#nextNoLabel').textContent = t('رقم الفاتورة القادم: ') + db.settings.nextInvoiceNo;
-  if(Auth.isManager()){renderInvoices(); renderProducts(); renderReports(); fillSettings();}
+  if(Auth.isManager()){renderInvoices(); renderProducts(); renderReports(); fillSettings(); renderAccounts(); paintAcct();}
   Sync.render();
   I18n.applyStatic();   // أي نص موسوم داخل قوالب مرسومة حديثاً
   applyBranding(); tick();

@@ -348,8 +348,7 @@ const I18N = {
 
   /* Accounts (dashboard) */
   'حسابات الدخول': 'Sign-in Accounts',
-  'إدارة الحسابات': 'Manage Accounts',
-  'إضافة كاشير أو مدير، تغيير كلمة المرور، وإيقاف الحسابات — من لوحة المتابعة.': 'Add a cashier or manager, change a password, or disable an account — from the dashboard.',
+  'إضافة الكاشير والمديرين، تغيير كلمات المرور، وإيقاف الحسابات.': 'Add cashiers and managers, change passwords, and disable accounts.',
   'الحسابات': 'Accounts',
   'اسم المستخدم': 'Username',
   'الدور': 'Role',

@@ -9,8 +9,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="app.css?v=28">
-<link rel="stylesheet" href="auth.css?v=28">
+<link rel="stylesheet" href="app.css?v=29">
+<link rel="stylesheet" href="auth.css?v=29">
 </head>
 <body>
 
@@ -46,6 +46,7 @@
   <button data-page="invoices" data-i18n="الفواتير">الفواتير</button>
   <button data-page="products" data-i18n="الأصناف">الأصناف</button>
   <button data-page="reports" data-i18n="التقارير">التقارير</button>
+  <button data-page="accounts" data-i18n="الحسابات">الحسابات</button>
   <button data-page="settings" data-i18n="الإعدادات">الإعدادات</button>
 </nav>
 </div>
@@ -225,6 +226,47 @@
   </div>
 </section>
 
+<!-- ══════════════ الحسابات ══════════════ -->
+<section class="page" id="page-accounts">
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-h"><h3 data-i18n="حسابات الدخول">حسابات الدخول</h3></div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr>
+          <th data-i18n="اسم المستخدم">اسم المستخدم</th><th style="width:130px" data-i18n="الدور">الدور</th>
+          <th style="width:130px" data-i18n="الحالة">الحالة</th><th style="width:280px" data-i18n="إجراءات">إجراءات</th>
+        </tr></thead>
+        <tbody id="acctBody"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-h"><h3 id="acctTitle"></h3></div>
+    <form class="card-b" id="acctForm" autocomplete="off">
+      <div class="acct-grid">
+        <div data-for="add"><label class="f" for="acctUser" data-i18n="اسم المستخدم">اسم المستخدم</label>
+          <input type="text" id="acctUser" dir="ltr" maxlength="40" autocapitalize="none" spellcheck="false" autocomplete="off">
+          <small data-i18n="حروف إنجليزية صغيرة وأرقام">حروف إنجليزية صغيرة وأرقام</small></div>
+        <div data-for="add"><label class="f" for="acctRole" data-i18n="الدور">الدور</label>
+          <select id="acctRole"><option value="cashier" data-i18n="كاشير">كاشير</option><option value="manager" data-i18n="مدير">مدير</option></select></div>
+        <div data-for="add password"><label class="f" for="acctNew" data-i18n="كلمة المرور الجديدة">كلمة المرور الجديدة</label>
+          <input type="password" id="acctNew" dir="ltr" maxlength="256" autocomplete="new-password">
+          <small data-i18n="8 حروف على الأقل">8 حروف على الأقل</small></div>
+        <div data-for="add password"><label class="f" for="acctNew2" data-i18n="تأكيد كلمة المرور">تأكيد كلمة المرور</label>
+          <input type="password" id="acctNew2" dir="ltr" maxlength="256" autocomplete="new-password"></div>
+        <div><label class="f" for="acctMine" data-i18n="كلمة مرورك الحالية (للتأكيد)">كلمة مرورك الحالية (للتأكيد)</label>
+          <input type="password" id="acctMine" dir="ltr" maxlength="256" autocomplete="current-password"></div>
+      </div>
+      <p class="muted" id="acctHint" style="font-size:13px" hidden
+         data-i18n="إيقاف الحساب يمنع صاحبه من الدخول فوراً، ويمكن تفعيله لاحقاً.">إيقاف الحساب يمنع صاحبه من الدخول فوراً، ويمكن تفعيله لاحقاً.</p>
+      <div class="row">
+        <button class="btn btn-primary" id="acctSave" type="submit"></button>
+        <button class="btn" id="acctCancel" type="button" data-i18n="إلغاء">إلغاء</button>
+      </div>
+    </form>
+  </div>
+</section>
+
 <!-- ══════════════ الإعدادات ══════════════ -->
 <section class="page" id="page-settings">
   <div class="grid2 cols-lg">
@@ -279,15 +321,6 @@
             <button class="btn btn-primary" id="btnSaveSettings" data-i18n="حفظ الإعدادات">حفظ الإعدادات</button>
             <button class="btn btn-dark" id="btnInstall" hidden data-i18n="تثبيت التطبيق على الجهاز">تثبيت التطبيق على الجهاز</button>
           </div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-h"><h3 data-i18n="حسابات الدخول">حسابات الدخول</h3></div>
-        <div class="card-b">
-          <p class="muted" style="margin-top:0; font-size:13.5px"
-             data-i18n="إضافة كاشير أو مدير، تغيير كلمة المرور، وإيقاف الحسابات — من لوحة المتابعة.">إضافة كاشير أو مدير، تغيير كلمة المرور، وإيقاف الحسابات — من لوحة المتابعة.</p>
-          <a class="btn btn-primary" href="dashboard.html#accounts" target="_blank" rel="noopener"><bdi data-i18n="إدارة الحسابات">إدارة الحسابات</bdi> <span aria-hidden="true">↗</span></a>
         </div>
       </div>
 
@@ -431,12 +464,12 @@
 
 <div id="toast" role="status" aria-live="polite"></div>
 
-<script src="auth.js?v=28"></script>
-<script src="i18n.js?v=28"></script>
-<script src="lock.js?v=28"></script>
-<script src="data.js?v=28"></script>
-<script src="qr.js?v=28"></script>
-<script src="sync.js?v=28"></script>
-<script src="app.js?v=28"></script>
+<script src="auth.js?v=29"></script>
+<script src="i18n.js?v=29"></script>
+<script src="lock.js?v=29"></script>
+<script src="data.js?v=29"></script>
+<script src="qr.js?v=29"></script>
+<script src="sync.js?v=29"></script>
+<script src="app.js?v=29"></script>
 </body>
 </html>
