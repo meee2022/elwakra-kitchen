@@ -65,13 +65,39 @@ const Sync = (function () {
     return inFlight;
   }
 
+  /** Managers mirror the cloud: sales made on any device appear here on their own, and cancelling
+      or collecting elsewhere follows. Nothing local is ever removed. Returns how many invoices changed. */
+  async function pull() {
+    if (!Auth.isManager()) return 0;
+    let changed = 0;
+    for (let more = true; more;) {
+      const got = await call('invoices:changes', { since: cfg().pulledAt || 0 });
+      for (const inv of got.rows) {
+        const mine = db.invoices.find(v => v.uid === inv.uid);
+        if (mine && (!mine._synced || mine._syncHash !== mine._stateHash)) continue;   // a local change not pushed yet wins
+        if (mine && stateHash(mine) === stateHash(inv)) continue;                      // our own push coming back
+        const fresh = { ...inv, _stateHash: stateHash(inv), _syncHash: stateHash(inv), _synced: true };
+        if (mine) Object.assign(mine, fresh); else db.invoices.push(fresh);
+        changed++;
+      }
+      if (got.rows.length) { cfg().pulledAt = got.next; save(); }
+      more = got.more;
+    }
+    if (changed) {
+      db.invoices.sort((x, y) => y.no - x.no);
+      // Keep this device's counter clear of numbers already issued elsewhere.
+      db.settings.nextInvoiceNo = Math.max(db.settings.nextInvoiceNo, db.invoices[0].no + 1);
+      save();
+      dispatchEvent(new Event('invoices-pulled'));
+    }
+    return changed;
+  }
+
   async function doRun(manual) {
     if (!navigator.onLine) { render('offline'); return; }
 
     const queue = pending();
-    if (!queue.length) { render('ok'); return; }
-
-    render('working');
+    if (queue.length) render('working');
     try {
       for (let i = 0; i < queue.length; i += BATCH) {
         const chunk = queue.slice(i, i + BATCH);
@@ -79,17 +105,21 @@ const Sync = (function () {
         chunk.forEach(v => { v._synced = true; v._syncHash = stateHash(v); });
         save();
       }
-      db.settings.sync.lastOk = new Date().toISOString();
-      db.settings.sync.lastError = '';
-      save();
+      const moved = queue.length + await pull();
+      // This runs every few seconds for a manager: only touch storage when something happened.
+      if (moved || db.settings.sync.lastError) {
+        db.settings.sync.lastOk = new Date().toISOString();
+        db.settings.sync.lastError = '';
+        save();
+      }
       render('ok');
-      if (manual) toast(I18n.t2('تمت مزامنة {0} فاتورة', queue.length), 'ok');
+      if (manual && moved) toast(I18n.t2('تمت مزامنة {0} فاتورة', moved), 'ok');
     } catch (e) {
       // A number already used by a different invoice in the cloud: say so plainly, it needs a person.
-      db.settings.sync.lastError = e.message.includes('UID_CONFLICT')
+      const error = e.message.includes('UID_CONFLICT')
         ? t('رقم فاتورة مستخدم في السحابة لفاتورة مختلفة — راجع رقم الفاتورة القادمة في الإعدادات.')
         : e.message;
-      save();
+      if (error !== db.settings.sync.lastError) { db.settings.sync.lastError = error; save(); }
       render('error');
       if (manual) toast(t('تعذّرت المزامنة: ') + e.message, 'err');
     }
@@ -129,8 +159,10 @@ const Sync = (function () {
     db.invoices.forEach(v => { if (!v._stateHash) v._stateHash = stateHash(v); });
     render();
     clearInterval(timer);
-    timer = setInterval(() => run(false), 60000);
+    // A manager follows sales as they happen; a till only needs to retry uploads.
+    timer = setInterval(() => { if (!document.hidden) run(false); }, Auth.isManager() ? 10000 : 60000);
     addEventListener('online', () => run(false));
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) run(false); });
     run(false);
   }
 

@@ -1337,6 +1337,12 @@ $('#btnWipe').addEventListener('click', () => {
   setTimeout(() => location.reload(), 250);
 });
 
+// Invoices that reached this device from the cloud (see Sync.pull): show them wherever they are listed.
+addEventListener('invoices-pulled', () => {
+  renderInvoices(); renderReports();
+  $('#nextNoLabel').textContent = t('رقم الفاتورة القادم: ') + db.settings.nextInvoiceNo;
+});
+
 /* ══════════════ الحسابات (للمدير) ══════════════ */
 // One form serves the four changes; the server confirms every one with the manager's own password.
 let acct = { mode: 'add', username: '' };   // add | password | disable | enable
