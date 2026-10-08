@@ -83,7 +83,7 @@ const Auth = (() => {
           profile={username:saved.username,role:saved.role,expiresAt:saved.expiresAt};
         }
         current={token:saved.token,...profile};
-        if(manager&&current.role!=='manager'){location.replace('./');return new Promise(()=>{});}
+        if(manager&&current.role!=='manager'){location.replace('../');return new Promise(()=>{});}
         document.documentElement.dataset.role=current.role;
         document.documentElement.classList.remove('auth-pending');
         const header=document.querySelector('header');

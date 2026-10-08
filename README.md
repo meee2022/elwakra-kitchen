@@ -30,7 +30,7 @@
 |---|---|
 | **https://stdk.vercel.app/** | صفحة الدخول |
 | `…/pos/` | نقطة البيع — للكاشير |
-| `…/pos/dashboard.html` | متابعة المبيعات — للمالك |
+| `…/pos/dashboard/` | متابعة المبيعات — للمالك |
 
 مرآة على GitHub Pages: https://meee2022.github.io/elwakra-kitchen/
 
@@ -74,7 +74,7 @@ python scripts/create-account.py admin manager      # ثم حساب cashier بن
 | `pos/data.js` | بيانات المنشأة الافتراضية وقائمة الأصناف والأسعار |
 | `pos/qr.js` | مولّد كود QR — تنفيذ محلي كامل بلا مكتبات خارجية |
 | `pos/sync.js` | عميل المزامنة السحابية |
-| `pos/dashboard.html` | لوحة متابعة المالك |
+| `pos/dashboard/index.html` | لوحة متابعة المالك |
 | `pos/sw.js` · `manifest.webmanifest` · `icons/` · `fonts/` | التثبيت والعمل بدون إنترنت |
 | `convex/schema.ts` · `invoices.ts` · `admin.ts` | قاعدة البيانات السحابية ودوالها |
 | `pos/دليل-التشغيل.md` | دليل الاستخدام بالتفصيل |

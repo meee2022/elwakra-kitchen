@@ -1369,7 +1369,7 @@ function renderAccounts() {
   $('#acctBody').innerHTML = acctList.map(a => `<tr>
     <td><bdi dir="ltr">${esc(a.username)}</bdi>${a.username === me ? ` <span class="muted">(${t('أنت')})</span>` : ''}</td>
     <td>${t(a.role === 'manager' ? 'مدير' : 'كاشير')}</td>
-    <td><span class="badge ${a.disabled ? 'b-void' : 'b-cash'}">${t(a.disabled ? 'موقوف' : 'مفعّل')}</span></td>
+    <td><span class="badge ${a.disabled ? 'b-void' : 'b-cash'}">${t(a.disabled ? 'موقوف' : 'نشط')}</span></td>
     <td class="acts"><button class="btn btn-sm" type="button" data-acct="password" data-user="${esc(a.username)}">${t('تغيير كلمة المرور')}</button>${
       a.username === me ? '' : `<button class="btn btn-sm" type="button" data-acct="${a.disabled ? 'enable' : 'disable'}" data-user="${esc(a.username)}">${t(a.disabled ? 'تفعيل' : 'إيقاف')}</button>`}</td>
   </tr>`).join('');

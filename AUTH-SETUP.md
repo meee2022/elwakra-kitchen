@@ -25,10 +25,10 @@ Status: implemented and locally tested, not deployed. Convex CLI currently repor
 
 - An upload whose number is already held by a different invoice (different fingerprint) is rejected with UID_CONFLICT rather than overwriting it; cancelling or collecting the same invoice still updates it.
 
-## Account management (dashboard)
+## Account management
 
 Managers add cashier or manager accounts, reset passwords and disable or re-enable accounts from the
-"Accounts" card of `pos/dashboard.html`. Functions: `authSessions:accounts` (list, no hashes) and the
+"Accounts" tab of the till (`pos/index.html`, managers only). Functions: `authSessions:accounts` (list, no hashes) and the
 actions `auth:createAccount`, `auth:setPassword`, `auth:setDisabled`.
 
 - Every change re-confirms the acting manager's own password on the server and counts against the

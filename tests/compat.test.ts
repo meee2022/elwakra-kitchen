@@ -9,7 +9,7 @@ const TOO_NEW = /oklch\(|oklab\(|color-mix\(|light-dark\(|(?:rgb|hsl)\(from |@st
 
 describe("front end stays compatible with Chrome 109", () => {
   const dir = join(__dirname, "..", "pos");
-  const files = [...readdirSync(dir).filter(f => /\.(css|js|html)$/.test(f)).map(f => join(dir, f)), join(__dirname, "..", "index.html")];
+  const files = [...readdirSync(dir).filter(f => /\.(css|js|html)$/.test(f)).map(f => join(dir, f)), join(dir, "dashboard", "index.html"), join(__dirname, "..", "index.html")];
   it.each(files)("%s uses nothing newer", file => {
     const hit = readFileSync(file, "utf8").match(TOO_NEW);
     expect(hit && hit[0]).toBeNull();

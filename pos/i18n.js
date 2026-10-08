@@ -346,7 +346,8 @@ const I18N = {
   'آخر فاتورة وصلت: ': 'Last invoice received: ',
   'لم تصل أي فاتورة بعد': 'No invoices received yet',
 
-  /* Accounts (dashboard) */
+  /* Accounts */
+  'نشط': 'Active',
   'حسابات الدخول': 'Sign-in Accounts',
   'إضافة الكاشير والمديرين، تغيير كلمات المرور، وإيقاف الحسابات.': 'Add cashiers and managers, change passwords, and disable accounts.',
   'الحسابات': 'Accounts',
