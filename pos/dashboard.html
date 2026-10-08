@@ -1,13 +1,14 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" class="auth-pending">
 <head>
+<style>html.auth-pending body>:not(#authGate){display:none!important}</style>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>متابعة المبيعات — مطابخ الجنوب</title>
 <meta name="theme-color" content="#A63C22">
 <link rel="icon" href="icons/favicon.png">
 <link rel="stylesheet" href="fonts/cairo.css">
-<script src="i18n.js?v=11"></script>
+<script src="i18n.js?v=17"></script>
 <style>
 :root{
   --brand:#A63C22; --brand-dark:#7C2D17; --cream:#FAF6F1; --paper:#fff;
@@ -99,6 +100,7 @@ input,select,.card,.row,.stat{min-width:0;max-width:100%}
 }
 @media(max-height:650px){header{position:static}}
 </style>
+<link rel="stylesheet" href="auth.css?v=17">
 </head>
 <body>
 
@@ -114,27 +116,8 @@ input,select,.card,.row,.stat{min-width:0;max-width:100%}
 
 <main>
 
-<!-- إعداد الاتصال -->
-<div class="card" id="setup">
-  <div class="card-h" data-i18n="الاتصال بقاعدة البيانات">الاتصال بقاعدة البيانات</div>
-  <div class="card-b">
-    <div id="setupMsg"></div>
-    <div style="margin-bottom:11px">
-      <label data-i18n="رابط النشرة (Deployment URL)">رابط النشرة (Deployment URL)</label>
-      <input type="text" id="url" dir="ltr" placeholder="https://xxxx.convex.cloud">
-    </div>
-    <div style="margin-bottom:14px">
-      <label data-i18n="مفتاح المزامنة">مفتاح المزامنة</label>
-      <input type="password" id="key" dir="ltr" placeholder="نفس المفتاح المضبوط في Convex" data-i18n-ph="نفس المفتاح المضبوط في Convex">
-    </div>
-    <div class="row">
-      <button class="btn btn-primary" id="btnConnect" data-i18n="اتصال">اتصال</button>
-      <span class="muted" style="font-size:12.5px" data-i18n="يُحفظ على هذا الجهاز فقط.">يُحفظ على هذا الجهاز فقط.</span>
-    </div>
-  </div>
-</div>
+<div id="setup" hidden></div>
 
-<!-- اللوحة -->
 <div id="board" hidden>
   <div class="card">
     <div class="card-h">
@@ -181,6 +164,7 @@ input,select,.card,.row,.stat{min-width:0;max-width:100%}
 
 </main>
 
+<script src="auth.js?v=17"></script>
 <script>
 'use strict';
 const $ = s => document.querySelector(s);
@@ -193,45 +177,11 @@ const fmtDate = iso => { const [y,m,d] = String(iso).split('-'); return `${d}/${
 
 let cfg = null;
 
-function loadCfg() {
-  try { cfg = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { cfg = null; }
-}
-
-async function call(path, args) {
-  const base = cfg.url.replace(/\/+$/, '');
-  const res = await fetch(`${base}/api/query`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path, args: { key: cfg.key, ...args }, format: 'json' })
-  });
-  if (!res.ok) throw new Error(`الخادم رد بالحالة ${res.status}`);
-  const out = await res.json();
-  if (out.status !== 'success') throw new Error(out.errorMessage || 'خطأ من الخادم');
-  return out.value;
-}
-
-/* ---------- الاتصال ---------- */
-$('#btnConnect').addEventListener('click', async () => {
-  const url = $('#url').value.trim(), key = $('#key').value.trim();
-  if (!url || !key) return msg('#setupMsg', t('اكتب رابط النشرة والمفتاح.'), 'err');
-  cfg = { url, key };
-  msg('#setupMsg', t('جاري الاتصال…'), 'info');
-  try {
-    await call('invoices:summary', { from: todayISO(), to: todayISO() });
-    localStorage.setItem(KEY, JSON.stringify(cfg));
-    msg('#setupMsg', '');
-    showBoard();
-  } catch (e) {
-    cfg = null;
-    msg('#setupMsg', t('فشل الاتصال: ') + esc(e.message), 'err');
-  }
-});
-
-$('#btnLogout').addEventListener('click', () => {
-  localStorage.removeItem(KEY);
-  cfg = null;
-  $('#board').hidden = true; $('#setup').hidden = false; $('#btnRefresh').hidden = true;
-});
+async function call(path, args) { return Auth.call(path,args); }
+$('#btnLogout').textContent='تسجيل الخروج';
+$('#btnLogout').removeAttribute('data-i18n');
+$('#btnLogout').addEventListener('click',()=>Auth.logout());
+addEventListener('auth-locked',()=>{cfg=null;$('#board').hidden=true;$('#stats').innerHTML='';$('#items').innerHTML='';});
 
 function msg(sel, text, kind) {
   $(sel).innerHTML = text ? `<div class="msg ${kind || 'info'}">${text}</div>` : '';
@@ -324,12 +274,7 @@ $('#btnLang').addEventListener('click', () => {
 let savedLang = 'ar';
 try { savedLang = localStorage.getItem(LANG_KEY) || 'ar'; } catch (e) {}
 I18n.set(savedLang);
-loadCfg();
-if (cfg && cfg.url && cfg.key) showBoard();
-else {
-  const p = new URLSearchParams(location.search);
-  if (p.get('url')) $('#url').value = p.get('url');
-}
+Auth.require(true).then(profile=>{cfg=profile;showBoard();});
 </script>
 </body>
 </html>

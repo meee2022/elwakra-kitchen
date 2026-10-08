@@ -13,10 +13,10 @@ const Sync = (function () {
   let again = false;        // وصل طلب رفع أثناء الجاري — يُنفَّذ بعده
 
   const cfg = () => db.settings.sync || (db.settings.sync = { url: '', key: '', enabled: false });
-  const configured = () => { const c = cfg(); return c.enabled && !!c.url && !!c.key; };
+  const configured = () => { const c = cfg(); return c.enabled && Auth.active(); };
 
   /** الفواتير التي تغيّرت محلياً ولم تُرفع بعد */
-  const pending = () => db.invoices.filter(v => v._syncHash !== v._stateHash || !v._synced);
+  const pending = () => db.invoices.filter(v => (Auth.isManager() || v._createdBy === Auth.profile()?.username) && (v._syncHash !== v._stateHash || !v._synced));
 
   /** بصمة حالة الفاتورة — تتغيّر عند التحصيل أو الإلغاء فتُعاد المزامنة */
   const stateHash = v => `${v.hash}|${v.status}|${v.paid ? 1 : 0}`;
@@ -29,17 +29,7 @@ const Sync = (function () {
 
   /** نداء دالة على النشرة. kind: 'query' للقراءة، 'mutation' للكتابة. */
   async function call(fn, args, kind = 'query') {
-    const c = cfg();
-    const base = c.url.replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/${kind}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: fn, args: { key: c.key, ...args }, format: 'json' })
-    });
-    if (!res.ok) throw new Error(`الخادم رد بالحالة ${res.status}`);
-    const out = await res.json();
-    if (out.status !== 'success') throw new Error(out.errorMessage || 'خطأ غير معروف من الخادم');
-    return out.value;
+    return Auth.call(fn, args, kind);
   }
 
   /** ينظّف الفاتورة من الحقول المحلية ويضبط أنواعها كما يتوقّعها الخادم */
@@ -127,8 +117,8 @@ const Sync = (function () {
 
   /** اختبار الاتصال بالنشرة قبل التفعيل */
   async function test() {
-    const known = await call('invoices:knownUids', {});
-    return known.length;
+    await Auth.call('authSessions:me');
+    return 0;
   }
 
   function start() {

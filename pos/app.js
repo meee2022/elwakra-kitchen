@@ -182,6 +182,7 @@ $('#nav button.active').setAttribute('aria-current', 'page');
 $('#nav').addEventListener('click', e => {
   const b = e.target.closest('button[data-page]');
   if (!b) return;
+  if (!Auth.isManager() && b.dataset.page !== 'pos') return;
   $$('#nav button').forEach(x => x.classList.toggle('active', x === b));
   $$('#nav button').forEach(x => x === b ? x.setAttribute('aria-current', 'page') : x.removeAttribute('aria-current'));
   if (b.dataset.page === 'settings' && !gotoSettingsAllowed) {
@@ -205,6 +206,21 @@ $('#nav').addEventListener('click', e => {
 /* ══════════════ نقطة البيع ══════════════ */
 let cart = [];
 let activeCat = 'meals';
+const DRAFT_KEY = 'stdk_locked_draft';
+addEventListener('auth-locked', event => {
+  if (!cart.length || !event.detail?.username) return;
+  const fields = Object.fromEntries(['cName','cPhone','payType','invDate','discount','delivery','invNote'].map(id => [id,document.getElementById(id).value]));
+  try { sessionStorage.setItem(DRAFT_KEY,JSON.stringify({username:event.detail.username,cart,fields})); } catch {}
+});
+function restoreLockedDraft() {
+  try {
+    const draft=JSON.parse(sessionStorage.getItem(DRAFT_KEY)||'null');
+    if(draft?.username!==Auth.profile().username || !Array.isArray(draft.cart)) return;
+    cart=draft.cart;
+    for(const id of ['cName','cPhone','payType','invDate','discount','delivery','invNote']) if(draft.fields[id]!=null)document.getElementById(id).value=draft.fields[id];
+    renderCart();sessionStorage.removeItem(DRAFT_KEY);
+  }catch{}
+}
 let gotoSettingsAllowed = false;   // يصبح true للحظة بعد نجاح التحقّق
 
 $('.pos-switch').addEventListener('click', e => {
@@ -345,6 +361,7 @@ function clearCart() {
 $('#btnClear').addEventListener('click', () => { if (!cart.length || confirm(t('إفراغ الفاتورة الحالية؟'))) clearCart(); });
 
 function saveInvoice(print) {
+  if (!Auth.active()) return toast('سجّل الدخول أولًا', 'err');
   if (!cart.length) return;
   const t = currentTotals();
   const s = db.settings;
@@ -374,6 +391,7 @@ function saveInvoice(print) {
   inv.hash = fingerprint([inv.uid, inv.date, inv.time, money(inv.total), inv.items.length,
     inv.items.map(i => i.ar + i.qty + i.price).join('|')].join('~'));
 
+  inv._createdBy = Auth.profile().username;
   Sync.mark(inv);
   db.invoices.unshift(inv);
   db.settings.nextInvoiceNo = inv.no + 1;
@@ -1122,7 +1140,7 @@ function fillSettings() {
   renderSecurity();
   const sc = db.settings.sync || {};
   $('#sSyncUrl').value = sc.url || '';
-  $('#sSyncKey').value = sc.key || '';
+  $('#sSyncKey').value = '';
   $('#sSyncOn').checked = !!sc.enabled;
   const loc = I18n.get() === 'en' ? 'en-GB' : 'ar-QA';
   $('#syncNote').innerHTML = sc.lastError
@@ -1237,49 +1255,17 @@ $('#askInput').addEventListener('keydown', e => {
 /* ---------- المزامنة السحابية ---------- */
 /** يقرأ حقول المزامنة من الشاشة ويحفظها — يُستدعى من زر البطاقة ومن حفظ الإعدادات */
 function saveSyncSettings() {
-  db.settings.sync = {
-    ...(db.settings.sync || {}),
-    url: $('#sSyncUrl').value.trim().replace(/\/+$/, ''),
-    key: $('#sSyncKey').value.trim(),
-    enabled: $('#sSyncOn').checked
-  };
-  save();
-  Sync.render();
+  db.settings.sync = {...db.settings.sync, url:Auth.base, enabled:$('#sSyncOn').checked};
+  delete db.settings.sync.key;
+  save(); Sync.render();
 }
-
 $('#btnSyncSave').addEventListener('click', async () => {
-  const url = $('#sSyncUrl').value.trim(), key = $('#sSyncKey').value.trim();
-  if (!url || !key) return toast(t('اكتب رابط النشرة والمفتاح أولاً'), 'err');
-
-  $('#sSyncOn').checked = true;          // الحفظ من هنا يعني التفعيل
-  saveSyncSettings();
-  try {
-    await Sync.test();                   // نتأكد أن البيانات صحيحة قبل الاعتماد عليها
-    toast(t('تم تفعيل المزامنة — الفواتير هترفع تلقائياً'), 'ok');
-    await Sync.run(false);
-  } catch (e) {
-    toast(t('حُفظت البيانات لكن الاتصال فشل: ') + e.message, 'err');
-  }
-  fillSettings();
+  $('#sSyncOn').checked=true;saveSyncSettings();
+  await Sync.run(true);fillSettings();
 });
-
-$('#btnSyncNow').addEventListener('click', () => {
-  if (!Sync.configured()) return toast(t('احفظ رابط النشرة والمفتاح وفعّل المزامنة أولاً'), 'err');
-  Sync.run(true).then(fillSettings);
-});
-$('#btnSyncTest').addEventListener('click', async () => {
-  const url = $('#sSyncUrl').value.trim(), key = $('#sSyncKey').value.trim();
-  if (!url || !key) return toast(t('اكتب رابط النشرة والمفتاح'), 'err');
-  const prev = db.settings.sync;
-  db.settings.sync = { ...prev, url, key, enabled: true };   // اختبار مؤقت بالقيم المكتوبة
-  try {
-    const n = await Sync.test();
-    toast(`الاتصال سليم — يوجد ${n} فاتورة على السحابة`, 'ok');
-  } catch (e) {
-    toast(t('فشل الاتصال: ') + e.message, 'err');
-  } finally {
-    db.settings.sync = prev;
-  }
+$('#btnSyncNow').addEventListener('click',()=>Sync.run(true).then(fillSettings));
+$('#btnSyncTest').addEventListener('click',async()=>{
+  try{await Auth.call('authSessions:me');toast('الاتصال بالحساب سليم','ok');}catch{toast('تعذّر الاتصال. سجّل الدخول مجددًا أو تحقق من الإنترنت.','err');}
 });
 
 $('#btnBackup').addEventListener('click', () => {
@@ -1345,7 +1331,7 @@ function rerenderAll() {
   }
   renderCatTabs(); renderProdGrid(); renderCart();
   $('#nextNoLabel').textContent = t('رقم الفاتورة القادم: ') + db.settings.nextInvoiceNo;
-  renderInvoices(); renderProducts(); renderReports(); fillSettings();
+  if(Auth.isManager()){renderInvoices(); renderProducts(); renderReports(); fillSettings();}
   Sync.render();
   I18n.applyStatic();   // أي نص موسوم داخل قوالب مرسومة حديثاً
   applyBranding(); tick();
@@ -1374,13 +1360,18 @@ function tick() {
 }
 
 (async function start() {
+  await Auth.require();
   await load();
+  if (db.settings.sync) delete db.settings.sync.key;
+  db.settings.sync = {...db.settings.sync, url:Auth.base, enabled:true};
+  await flush();
   Lock.guard();                       // يقفل الشاشة إن كان هناك رمز دخول
   I18n.set(db.settings.lang || 'ar');
   applyBranding();
   renderCatTabs();
   renderProdGrid();
   clearCart();
+  restoreLockedDraft();
   $('#rFrom').value = todayISO().slice(0, 8) + '01';
   $('#rTo').value = todayISO();
   tick(); setInterval(tick, 20000);

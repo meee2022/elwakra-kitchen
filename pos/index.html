@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" class="auth-pending">
 <head>
+<style>html.auth-pending body>:not(#authGate){display:none!important}</style>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>مطابخ الجنوب — نظام نقاط البيع والفواتير الإلكترونية</title>
@@ -8,7 +9,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="app.css?v=15">
+<link rel="stylesheet" href="app.css?v=17">
+<link rel="stylesheet" href="auth.css?v=17">
 </head>
 <body>
 
@@ -321,12 +323,8 @@
         </div>
         <div class="card-b">
           <p class="muted" style="margin-top:0; font-size:13.5px" data-i18n="نقطة البيع تشتغل محلياً دائماً. لما المزامنة تكون مفعّلة، الفواتير بتترفع تلقائياً لقاعدة البيانات السحابية عشان تتابعها من الموبايل ويبقى عندك نسخة برّه الجهاز.">نقطة البيع تشتغل محلياً دائماً. لما المزامنة تكون مفعّلة، الفواتير بتترفع تلقائياً لقاعدة البيانات السحابية عشان تتابعها من الموبايل ويبقى عندك نسخة برّه الجهاز.</p>
-          <div class="grid2">
-            <div><label class="f" for="sSyncUrl" data-i18n="رابط النشرة (Deployment URL)">رابط النشرة (Deployment URL)</label>
-              <input type="text" id="sSyncUrl" placeholder="https://xxxx.convex.cloud" dir="ltr"></div>
-            <div><label class="f" for="sSyncKey" data-i18n="مفتاح المزامنة (SYNC_KEY)">مفتاح المزامنة (SYNC_KEY)</label>
-              <input type="text" id="sSyncKey" placeholder="نفس المفتاح المضبوط في Convex" data-i18n-ph="نفس المفتاح المضبوط في Convex" dir="ltr"></div>
-          </div>
+          <p>المزامنة محمية بحسابك الحالي، ولا تحتاج مفتاح اتصال.</p>
+          <input type="hidden" id="sSyncUrl"><input type="hidden" id="sSyncKey">
           <div class="row" style="margin-top:12px">
             <label class="row" style="gap:6px; font-weight:600; font-size:13.5px">
               <input type="checkbox" id="sSyncOn" style="width:auto"> تفعيل المزامنة التلقائية
@@ -414,11 +412,12 @@
 
 <div id="toast" role="status" aria-live="polite"></div>
 
-<script src="i18n.js?v=15"></script>
-<script src="lock.js?v=15"></script>
-<script src="data.js?v=15"></script>
-<script src="qr.js?v=15"></script>
-<script src="sync.js?v=15"></script>
-<script src="app.js?v=15"></script>
+<script src="auth.js?v=17"></script>
+<script src="i18n.js?v=17"></script>
+<script src="lock.js?v=17"></script>
+<script src="data.js?v=17"></script>
+<script src="qr.js?v=17"></script>
+<script src="sync.js?v=17"></script>
+<script src="app.js?v=17"></script>
 </body>
 </html>

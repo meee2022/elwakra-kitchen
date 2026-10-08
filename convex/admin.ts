@@ -1,22 +1,16 @@
+import { requireSession } from "./access";
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-/* ============================================================
-   أدوات إدارية — تُستخدم قبل بدء التشغيل الفعلي لمسح بيانات التجربة.
-   محمية بنفس مفتاح المزامنة، وتتطلب تأكيداً نصياً صريحاً.
-   ============================================================ */
+/* Server authorization: only unexpired account sessions are accepted. Legacy shared keys never grant access. */
 
-function assertKey(key: string) {
-  const expected = process.env.SYNC_KEY;
-  if (!expected) throw new Error("لم يُضبط SYNC_KEY في إعدادات Convex.");
-  if (key !== expected) throw new Error("مفتاح المزامنة غير صحيح.");
-}
+
 
 /** يمسح كل الفواتير من السحابة. لا يمس بيانات جهاز الكاشير. */
 export const wipeAll = mutation({
-  args: { key: v.string(), confirm: v.string() },
+  args: { token: v.optional(v.string()), key: v.optional(v.string()), confirm: v.string() },
   handler: async (ctx, args) => {
-    assertKey(args.key);
+    await requireSession(ctx, args.token, true);
     if (args.confirm !== "امسح كل الفواتير") {
       throw new Error('التأكيد غير صحيح — أرسل confirm بالنص: "امسح كل الفواتير"');
     }

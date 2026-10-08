@@ -1,0 +1,20 @@
+@import url('fonts/cairo.css');
+html.auth-pending body>:not(#authGate){display:none!important}
+#authGate{font-family:'Cairo',Tahoma,sans-serif;min-height:100dvh;display:grid;place-items:center;padding:24px;background:#f7f4f0;color:#30251f;direction:rtl;box-sizing:border-box}
+#authGate *{box-sizing:border-box}
+.auth-box{width:100%;max-width:420px;background:#fdfbf9;border:1px solid #e5dcd4;border-radius:16px;padding:28px}
+.auth-brand{font-size:13px;color:#88452f;margin-bottom:14px;font-weight:700}
+.auth-box h1{font-size:24px;margin:0 0 8px;line-height:1.6}
+.auth-box p{font-size:13px;color:#695e56;line-height:1.9;margin:0 0 22px}
+.auth-box label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px}
+.auth-box input{width:100%;min-height:46px;padding:10px 12px;font:16px 'Cairo',sans-serif;border:1px solid #d6c8bc;border-radius:8px;background:#fdfbf9;color:#30251f}
+.auth-box button{min-height:46px;padding:10px 16px;border-radius:8px;font:600 14px 'Cairo',sans-serif;cursor:pointer}
+.auth-submit{width:100%;margin-top:18px;background:#923f29;color:#fff;border:0}
+.auth-submit:disabled{opacity:.6;cursor:wait}
+.auth-password{display:flex;gap:6px}.auth-password input{min-width:0;flex:1}.auth-password button{border:1px solid #d6c8bc;background:transparent;color:#5b4338;font-size:12px}
+.auth-error{min-height:24px;font-size:13px;color:#a32922;line-height:1.8;margin-top:12px}
+#authGate :focus-visible{outline:3px solid #923f29;outline-offset:3px}
+.auth-user{font-size:11px;color:var(--muted);margin-inline-start:8px}
+html[data-role=cashier] #nav button:not([data-page=pos]),html[data-role=cashier] .dashboard-link{display:none!important}
+html[data-role=cashier] #nav{display:flex}
+@media(max-width:480px){#authGate{padding:16px}.auth-box{padding:22px}.auth-box h1{font-size:22px}}

@@ -1,21 +1,10 @@
+import { requireSession } from "./access";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-/* ============================================================
-   دوال المزامنة والمتابعة.
-   كل دالة محمية بمفتاح سري مخزّن في متغيّرات بيئة Convex باسم SYNC_KEY،
-   لأن الدوال العامة قابلة للنداء من أي جهة تعرف رابط النشرة.
-   ============================================================ */
+/* Server authorization: only unexpired account sessions are accepted. Legacy shared keys never grant access. */
 
-function assertKey(key: string) {
-  const expected = process.env.SYNC_KEY;
-  if (!expected) {
-    throw new Error("لم يُضبط SYNC_KEY في إعدادات Convex — أضفه قبل الاستخدام.");
-  }
-  if (key !== expected) {
-    throw new Error("مفتاح المزامنة غير صحيح.");
-  }
-}
+
 
 const invoiceFields = {
   uid: v.string(),
@@ -46,11 +35,12 @@ const invoiceFields = {
 /** يرفع دفعة فواتير: يُنشئ الجديد ويحدّث الموجود بمطابقة المعرّف الفريد. */
 export const push = mutation({
   args: {
-    key: v.string(),
+    token: v.optional(v.string()), key: v.optional(v.string()),
     invoices: v.array(v.object(invoiceFields)),
   },
   handler: async (ctx, args) => {
-    assertKey(args.key);
+    const { user } = await requireSession(ctx, args.token);
+    if (args.invoices.length > 25) throw new Error("Batch too large");
     const saved: string[] = [];
     const now = Date.now();
 
@@ -60,6 +50,18 @@ export const push = mutation({
         .withIndex("by_uid", (q) => q.eq("uid", inv.uid))
         .unique();
 
+      if (user.role === "cashier") {
+        if (existing) {
+          const same = Object.keys(invoiceFields).every(k => JSON.stringify((existing as any)[k]) === JSON.stringify((inv as any)[k]));
+          if (!same) throw new Error("FORBIDDEN: cashier cannot modify existing invoices");
+          saved.push(inv.uid); continue;
+        }
+        if (inv.status !== "active" || (inv.type !== "cash" && inv.type !== "credit") || inv.paid !== (inv.type === "cash")) throw new Error("Invalid invoice state");
+      }
+      if (!inv.items.length || inv.items.some(i => !Number.isFinite(i.qty) || i.qty <= 0 || !Number.isFinite(i.price) || i.price < 0)) throw new Error("Invalid invoice items");
+      const subtotal = inv.items.reduce((n,i)=>n+i.qty*i.price,0);
+      const base = Math.max(0, subtotal-inv.discount)+inv.delivery;
+      if ([inv.subtotal,inv.total,inv.vat,inv.discount,inv.delivery,inv.vatRate].some(n=>!Number.isFinite(n)||n<0) || Math.abs(inv.subtotal-subtotal)>0.011 || Math.abs(inv.vat-base*inv.vatRate/100)>0.011 || Math.abs(inv.total-(base+inv.vat))>0.011) throw new Error("Invalid invoice totals");
       if (existing) {
         await ctx.db.patch(existing._id, { ...inv, syncedAt: now });
       } else {
@@ -74,13 +76,13 @@ export const push = mutation({
 /** فواتير فترة — للوحة متابعة المالك. */
 export const list = query({
   args: {
-    key: v.string(),
+    token: v.optional(v.string()), key: v.optional(v.string()),
     from: v.optional(v.string()),
     to: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    assertKey(args.key);
+    await requireSession(ctx, args.token, true);
     let rows = await ctx.db.query("invoices").withIndex("by_date").order("desc").collect();
 
     if (args.from) rows = rows.filter((r) => r.date >= args.from!);
@@ -93,9 +95,9 @@ export const list = query({
 
 /** ملخّص فترة: الإجماليات والكميات والأصناف الأكثر مبيعاً. */
 export const summary = query({
-  args: { key: v.string(), from: v.optional(v.string()), to: v.optional(v.string()) },
+  args: { token: v.optional(v.string()), key: v.optional(v.string()), from: v.optional(v.string()), to: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    assertKey(args.key);
+    await requireSession(ctx, args.token, true);
     let rows = await ctx.db.query("invoices").collect();
 
     if (args.from) rows = rows.filter((r) => r.date >= args.from!);
@@ -147,9 +149,9 @@ export const summary = query({
 
 /** المعرّفات الموجودة سحابياً — تستخدمها نقطة البيع لمعرفة ما لم يُرفع بعد. */
 export const knownUids = query({
-  args: { key: v.string() },
+  args: { token: v.optional(v.string()), key: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    assertKey(args.key);
+    await requireSession(ctx, args.token, true);
     const rows = await ctx.db.query("invoices").collect();
     return rows.map((r) => ({ uid: r.uid, hash: r.hash, status: r.status, paid: r.paid }));
   },

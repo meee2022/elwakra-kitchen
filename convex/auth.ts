@@ -1,0 +1,20 @@
+"use node";
+import { action } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { v } from "convex/values";
+import { randomBytes, scrypt, timingSafeEqual, createHash } from "node:crypto";
+import { promisify } from "node:util";
+const derive = promisify(scrypt);
+export const login = action({args:{username:v.string(),password:v.string()},handler:async(ctx,args):Promise<any>=>{
+  if(args.username.length>80 || args.password.length>256)return {error:"INVALID_CREDENTIALS"};
+  const attempt = await ctx.runMutation(internal.authSessions.reserveAttempt,{username:args.username.trim().toLowerCase()});
+  if(attempt.error)return {error:attempt.error};
+  const user = attempt.user;
+  const parts = (user?.passwordHash || "scrypt:"+"0".repeat(32)+":"+"0".repeat(128)).split(":");
+  const hash = await derive(args.password,parts[1],64) as Buffer;
+  const valid = timingSafeEqual(hash,Buffer.from(parts[2],"hex"));
+  if(!valid || !user || user.disabled)return {error:"INVALID_CREDENTIALS"};
+  const token=randomBytes(32).toString("hex");
+  const profile=await ctx.runMutation(internal.authSessions.create,{userId:user._id,passwordHash:user.passwordHash,tokenHash:createHash("sha256").update(token).digest("hex")});
+  return {token,...profile};
+}});

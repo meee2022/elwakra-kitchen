@@ -6,9 +6,19 @@
   "scripts": {
     "dev": "convex dev",
     "deploy": "convex deploy",
-    "pos": "python -m http.server 8777 --directory pos"
+    "pos": "python -m http.server 8777 --directory pos",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "convex": "^1.17.0"
+    "@types/node": "^26.6.4",
+    "convex": "^1.17.0",
+    "convex-test": "^0.0.60",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.3",
+    "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "@noble/hashes": "^1.8.0"
   }
 }
