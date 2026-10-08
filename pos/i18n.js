@@ -347,6 +347,9 @@ const I18N = {
   'لم تصل أي فاتورة بعد': 'No invoices received yet',
 
   /* Accounts (dashboard) */
+  'حسابات الدخول': 'Sign-in Accounts',
+  'إدارة الحسابات': 'Manage Accounts',
+  'إضافة كاشير أو مدير، تغيير كلمة المرور، وإيقاف الحسابات — من لوحة المتابعة.': 'Add a cashier or manager, change a password, or disable an account — from the dashboard.',
   'الحسابات': 'Accounts',
   'اسم المستخدم': 'Username',
   'الدور': 'Role',
