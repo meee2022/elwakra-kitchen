@@ -345,6 +345,10 @@ function updateTotals() {
   // سطرا الخصم والتوصيل يظهران عند وجود قيمة فقط — أقل تشويشاً ومساحة أوفر
   $('#rowDisc').hidden = !(t.discount > 0);
   $('#rowDel').hidden = !(t.delivery > 0);
+  // With no discount, delivery or VAT the subtotal just repeats the total; reclaim the line.
+  const plain = !(t.discount > 0 || t.delivery > 0 || t.vat > 0);
+  $('#tSub').parentElement.hidden = plain;
+  $('.totals').classList.toggle('plain', plain);
   $('#tGrand').textContent = money(t.total) + ' ' + I18n.t('ر.ق');
   $('#mobileCartTotal').textContent = $('#tGrand').textContent;
   $('#btnSave').disabled = $('#btnSaveOnly').disabled = !cart.length;

@@ -9,8 +9,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="app.css?v=21">
-<link rel="stylesheet" href="auth.css?v=21">
+<link rel="stylesheet" href="app.css?v=22">
+<link rel="stylesheet" href="auth.css?v=22">
 </head>
 <body>
 
@@ -77,7 +77,8 @@
         </div>
 
         <div class="cart-scroll">
-        <div class="card-b" style="padding-bottom:8px">
+        <div class="cart-items" id="cartItems"></div>
+        <div class="card-b cart-fields" style="padding-bottom:8px">
           <div><label class="f" for="cName" data-i18n="اسم العميل / الجهة">اسم العميل / الجهة</label><input type="text" id="cName" placeholder="اسم الشخص أو الشركة أو الوزارة (اختياري)" data-i18n-ph="اسم الشخص أو الشركة أو الوزارة (اختياري)"></div>
           <div class="grid2" style="margin-top:10px">
             <div><label class="f" for="payType" data-i18n="نوع الدفع">نوع الدفع</label>
@@ -86,8 +87,6 @@
             <div><label class="f" for="invDate" data-i18n="تاريخ الفاتورة">تاريخ الفاتورة</label><input type="date" id="invDate"></div>
           </div>
         </div>
-
-        <div class="cart-items" id="cartItems"></div>
 
         <details class="invoice-details"><summary data-i18n="الجوال والخصم والتوصيل">الجوال والخصم والتوصيل</summary><div class="card-b">          <div class="grid2">
             
@@ -412,12 +411,12 @@
 
 <div id="toast" role="status" aria-live="polite"></div>
 
-<script src="auth.js?v=21"></script>
-<script src="i18n.js?v=21"></script>
-<script src="lock.js?v=21"></script>
-<script src="data.js?v=21"></script>
-<script src="qr.js?v=21"></script>
-<script src="sync.js?v=21"></script>
-<script src="app.js?v=21"></script>
+<script src="auth.js?v=22"></script>
+<script src="i18n.js?v=22"></script>
+<script src="lock.js?v=22"></script>
+<script src="data.js?v=22"></script>
+<script src="qr.js?v=22"></script>
+<script src="sync.js?v=22"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>
