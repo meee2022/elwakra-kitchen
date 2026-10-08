@@ -5,9 +5,9 @@ parser.add_argument("username")
 parser.add_argument("role", choices=["manager", "cashier"])
 parser.add_argument("--prod", action="store_true", help="Target production instead of development")
 args = parser.parse_args()
-password = getpass.getpass("New password (12+ characters): ")
-if len(password) < 12 or len(password) > 256:
-    sys.exit("Password must be 12 to 256 characters.")
+password = getpass.getpass("New password (8+ characters): ")
+if len(password) < 8 or len(password) > 256:
+    sys.exit("Password must be 8 to 256 characters.")
 if password != getpass.getpass("Confirm password: "):
     sys.exit("Passwords do not match.")
 root = pathlib.Path(__file__).resolve().parents[1]

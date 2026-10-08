@@ -10,7 +10,7 @@ Status: implemented and locally tested, not deployed. Convex CLI currently repor
 4. Create the two accounts from a trusted local terminal (passwords are prompted without echoing and only scrypt hashes are sent):
    - `python scripts/create-account.py admin manager --prod`
    - `python scripts/create-account.py cashier cashier --prod`
-   The script refuses to overwrite an existing account. Choose unique passwords and keep them in a password manager. There are no default credentials.
+   The script refuses to overwrite an existing account. Passwords need 8+ characters (online guessing is capped at 5 attempts per 15 minutes per account). Choose unique passwords and keep them in a password manager. There are no default credentials.
 5. Verify manager and cashier on the local UI connected to production; use test data on a separate development deployment when testing invoice writes. Publish the validated frontend to the existing GitHub Pages destination, then refresh cashier devices.
 
 ## Permissions
