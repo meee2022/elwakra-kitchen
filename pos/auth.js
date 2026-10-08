@@ -49,6 +49,8 @@ const Auth = (() => {
     };
     $g('form').onsubmit=async event=>{
       event.preventDefault();const button=$g('.auth-submit');
+      // Usernames are ASCII only, so anything else is the keyboard left on another language: say so instead of spending a sign-in attempt.
+      if(/[^ -~]/.test($g('#authUsername').value)){status='اسم المستخدم يُكتب بحروف إنجليزية. غيّر لغة لوحة المفاتيح وحاول مرة أخرى. — Usernames use English letters. Switch the keyboard language and try again.';paint();return;}
       button.disabled=true;button.textContent=TEXT[lang].checking;status='';$g('#authError').textContent='';
       try{
         const result=await request('auth:login',{username:$g('#authUsername').value,password:$g('#authPassword').value},'action');
@@ -57,7 +59,7 @@ const Auth = (() => {
       }catch(e){status=e.message.includes('TOO_MANY_ATTEMPTS')
         ?'محاولات كثيرة. انتظر 15 دقيقة ثم حاول مرة أخرى. — Too many attempts. Wait 15 minutes and try again.'
         :e.message.includes('INVALID_CREDENTIALS')
-        ?'اسم المستخدم أو كلمة المرور غير صحيحة. — Wrong username or password.'
+        ?'اسم المستخدم أو كلمة المرور غير صحيحة. تأكد أن لوحة المفاتيح إنجليزية وأن Caps Lock مطفأ. — Wrong username or password. Check the keyboard language and Caps Lock.'
         :'تعذّر تسجيل الدخول. تحقق من الاتصال وحاول مرة أخرى. — Could not sign in. Check the connection and try again.';}
       finally{button.disabled=false;paint();}
     };
