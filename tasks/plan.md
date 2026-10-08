@@ -1,23 +1,28 @@
-# Implementation Plan: Card payment + leaner invoice header
+# Implementation Plan: Account management in the dashboard
 
-Spec: `SPEC-card-payment.md`.
+Spec: `SPEC-account-management.md`. (Previous plan, card payment, shipped in 55914e0.)
 
 ## Decisions
-- Third payment type `card`, settled on the spot like cash (`paid: true`). No card data stored.
-- The cashier is **asked** for the payment method when saving (card is the focused button, so
-  Enter picks it). The old "payment type" dropdown in the cart is removed: one explicit choice
-  per sale keeps the cash/card split in the daily figures honest.
-- English label for on-account stays **Credit**.
-- Printed invoice shows only the commercial registry number, in the footer. The tax number and
-  the establishment number leave the invoice and its QR. The ministry register keeps all three.
-- Backend is deployed before the frontend (old frontend works with the new backend, not the reverse).
+- Managers list accounts, add cashier/manager accounts, reset passwords and disable/enable accounts
+  from the dashboard. Disable, never delete.
+- Every change re-confirms the acting manager's own password on the server, so an unattended
+  dashboard cannot mint or hijack accounts. Those confirmations share the login attempt limit.
+- A manager cannot disable their own account. Since the actor is always an active manager, this
+  alone guarantees at least one active manager remains.
+- Resetting a password or disabling an account closes that account's sessions at once.
+- Passwords are hashed with scrypt on the server (same as login). Hashes never leave the server.
+- No new files on the server: actions live in `convex/auth.ts` (node runtime, scrypt), database
+  functions in `convex/authSessions.ts`.
+
+## Threat model (short)
+| Threat | Mitigation |
+|---|---|
+| Cashier or anonymous caller invokes account functions directly | `requireSession(..., manager)` in every function; tests call the API directly |
+| Unattended manager session used to create a manager | Manager password re-confirmed per change |
+| Brute-forcing that confirmation with a stolen session | Shared 5-per-15-minutes attempt limit |
+| Password hashes leaking through the list | Field allowlist (username, role, disabled); test asserts it |
+| Manager locks everyone out | Cannot disable self |
+| Disabled user keeps working on an open till | Sessions closed on the server; client must recognise the rejection (see task 2) |
 
 ## Order
-server rule + summary → checkout prompt → card in lists/reports/dashboard → invoice print → verify → deploy.
-
-## Risks
-| Risk | Mitigation |
-|---|---|
-| New frontend reaches an old backend and card sales are rejected | Deploy Convex first, then push |
-| Kitchen PC runs Chrome 109 | No new CSS/JS features; `tests/compat.test.ts` must stay green |
-| Stale service-worker cache | Bump `?v=` and `CACHE` to 23 |
+server functions + tests -> client error codes -> dashboard UI -> verify -> deploy backend -> push frontend.

@@ -1,6 +1,6 @@
-import { internalMutation, mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query, type MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { requireSession, tokenHash } from "./access";
 
 export const reserveAttempt = internalMutation({
@@ -49,3 +49,53 @@ export const provision = internalMutation({args:{username:v.string(),passwordHas
   await ctx.db.insert("users",{...args,disabled:false});
   return {username:args.username,role:args.role};
 }});
+
+/* ── Account management: managers only. Every change is made through an action in auth.ts,
+      which first re-confirms the acting manager's own password. ── */
+export const accounts = query({ args: {token:v.string()}, handler: async (ctx, {token}) => {
+  await requireSession(ctx, token, true);
+  return (await ctx.db.query("users").collect())
+    .map(u => ({username: u.username, role: u.role, disabled: u.disabled}))   // never the hash
+    .sort((a, b) => a.username.localeCompare(b.username));
+}});
+export const manager = internalQuery({ args: {token:v.string()}, handler: async (ctx, {token}) => {
+  const {user} = await requireSession(ctx, token, true);
+  return {username: user.username, passwordHash: user.passwordHash};
+}});
+// The action verified the manager's password against managerHash a moment ago. Make sure that is
+// still the session's password, then forget the attempt the check cost.
+async function confirmed(ctx: MutationCtx, token: string, managerHash: string) {
+  const {user} = await requireSession(ctx, token, true);
+  if (user.passwordHash !== managerHash) throw new ConvexError("AUTH_REQUIRED");
+  const attempt = await ctx.db.query("loginAttempts").withIndex("by_bucket", q => q.eq("bucket", "user:" + user._id)).unique();
+  if (attempt) await ctx.db.delete(attempt._id);
+  return user;
+}
+const byName = (ctx: MutationCtx, username: string) =>
+  ctx.db.query("users").withIndex("by_username", q => q.eq("username", username)).unique();
+// Refusals are returned, not thrown, so the cleared attempt above is not rolled back with them.
+export const addAccount = internalMutation({
+  args: {token:v.string(), managerHash:v.string(), username:v.string(), role:v.union(v.literal("manager"),v.literal("cashier")), passwordHash:v.string()},
+  handler: async (ctx, a) => {
+    const me = await confirmed(ctx, a.token, a.managerHash);
+    if (await byName(ctx, a.username)) return {error: "USERNAME_TAKEN"};
+    await ctx.db.insert("users", {username: a.username, passwordHash: a.passwordHash, role: a.role, disabled: false});
+    console.log(`account ${a.username} (${a.role}) created by ${me.username}`);
+    return {};
+  }
+});
+export const updateAccount = internalMutation({
+  args: {token:v.string(), managerHash:v.string(), username:v.string(), passwordHash:v.optional(v.string()), disabled:v.optional(v.boolean())},
+  handler: async (ctx, a) => {
+    const me = await confirmed(ctx, a.token, a.managerHash);
+    const target = await byName(ctx, a.username);
+    if (!target) return {error: "NOT_FOUND"};
+    // The acting manager is active, so refusing this keeps at least one manager able to sign in.
+    if (a.disabled && target._id === me._id) return {error: "CANNOT_DISABLE_SELF"};
+    await ctx.db.patch(target._id, a.passwordHash ? {passwordHash: a.passwordHash} : {disabled: !!a.disabled});
+    if (a.passwordHash || a.disabled)
+      for (const s of await ctx.db.query("sessions").collect()) if (s.userId === target._id) await ctx.db.delete(s._id);
+    console.log(`account ${a.username} ${a.passwordHash ? "password reset" : a.disabled ? "disabled" : "enabled"} by ${me.username}`);
+    return {};
+  }
+});

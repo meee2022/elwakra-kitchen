@@ -98,3 +98,59 @@ describe("account access controls",()=>{
     expect(await t.action(api.auth.login,{username:"missing-user",password})).toEqual({error:"INVALID_CREDENTIALS"});
   });
 });
+
+describe("account management",()=>{
+  const fresh="another-good-password";
+  const signIn=(t:any,username:string,pw:string)=>t.action(api.auth.login,{username,password:pw});
+  it("is closed to cashiers and to callers without a session",async()=>{
+    const {t,login}=await setup("cashier");const token=login.token;
+    await expect(t.query(api.authSessions.accounts,{token})).rejects.toThrow("FORBIDDEN");
+    await expect(t.action(api.auth.createAccount,{token,password,username:"sara",role:"manager",newPassword:fresh})).rejects.toThrow("FORBIDDEN");
+    await expect(t.action(api.auth.setPassword,{token,password,username:"cashier",newPassword:fresh})).rejects.toThrow("FORBIDDEN");
+    await expect(t.action(api.auth.setDisabled,{token,password,username:"cashier",disabled:false})).rejects.toThrow("FORBIDDEN");
+    await expect(t.action(api.auth.createAccount,{token:"0".repeat(64),password,username:"sara",role:"cashier",newPassword:fresh})).rejects.toThrow("AUTH_REQUIRED");
+    expect((await t.run(ctx=>ctx.db.query("users").collect())).length).toBe(1);
+  });
+  it("lets a manager add an account that can sign in, and lists accounts without their hashes",async()=>{
+    const {t,login}=await setup();
+    await t.action(api.auth.createAccount,{token:login.token,password,username:" Sara ",role:"cashier",newPassword:fresh});
+    expect((await signIn(t,"sara",fresh)).role).toBe("cashier");
+    const list=await t.query(api.authSessions.accounts,{token:login.token});
+    expect(list).toEqual([{username:"manager",role:"manager",disabled:false},{username:"sara",role:"cashier",disabled:false}]);
+  });
+  it("rejects a wrong manager password, duplicate names, bad names and short passwords",async()=>{
+    const {t,login}=await setup();const base={token:login.token,password,username:"sara",role:"cashier" as const,newPassword:fresh};
+    await expect(t.action(api.auth.createAccount,{...base,password:"not-the-password"})).rejects.toThrow("WRONG_PASSWORD");
+    await expect(t.action(api.auth.createAccount,{...base,username:"manager"})).rejects.toThrow("USERNAME_TAKEN");
+    await expect(t.action(api.auth.createAccount,{...base,username:"a b"})).rejects.toThrow("INVALID_USERNAME");
+    await expect(t.action(api.auth.createAccount,{...base,newPassword:"short"})).rejects.toThrow("WEAK_PASSWORD");
+    await expect(t.action(api.auth.setPassword,{token:login.token,password,username:"nobody",newPassword:fresh})).rejects.toThrow("NOT_FOUND");
+    expect((await t.run(ctx=>ctx.db.query("users").collect())).length).toBe(1);
+  });
+  it("resets a password and closes that account's sessions",async()=>{
+    const {t,login}=await setup();
+    await t.action(api.auth.createAccount,{token:login.token,password,username:"sara",role:"cashier",newPassword:fresh});
+    const sara=await signIn(t,"sara",fresh);
+    await t.action(api.auth.setPassword,{token:login.token,password,username:"sara",newPassword:"a-third-password"});
+    await expect(t.query(api.authSessions.me,{token:sara.token})).rejects.toThrow("AUTH_REQUIRED");
+    expect((await signIn(t,"sara",fresh)).error).toBe("INVALID_CREDENTIALS");
+    expect((await signIn(t,"sara","a-third-password")).role).toBe("cashier");
+  });
+  it("disables and re-enables an account, but never the manager's own",async()=>{
+    const {t,login}=await setup();
+    await t.action(api.auth.createAccount,{token:login.token,password,username:"sara",role:"manager",newPassword:fresh});
+    const sara=await signIn(t,"sara",fresh);
+    await t.action(api.auth.setDisabled,{token:login.token,password,username:"sara",disabled:true});
+    await expect(t.query(api.authSessions.me,{token:sara.token})).rejects.toThrow("AUTH_REQUIRED");
+    expect((await signIn(t,"sara",fresh)).error).toBe("INVALID_CREDENTIALS");
+    await t.action(api.auth.setDisabled,{token:login.token,password,username:"sara",disabled:false});
+    expect((await signIn(t,"sara",fresh)).role).toBe("manager");
+    await expect(t.action(api.auth.setDisabled,{token:login.token,password,username:"manager",disabled:true})).rejects.toThrow("CANNOT_DISABLE_SELF");
+  });
+  it("limits wrong manager passwords without charging successful changes",async()=>{
+    const {t,login}=await setup();const base={token:login.token,password,role:"cashier" as const,newPassword:fresh};
+    for(let i=0;i<7;i++)await t.action(api.auth.createAccount,{...base,username:"cashier"+i});
+    for(let i=0;i<5;i++)await expect(t.action(api.auth.createAccount,{...base,username:"x"+i+"yz",password:"not-the-password"})).rejects.toThrow("WRONG_PASSWORD");
+    await expect(t.action(api.auth.createAccount,{...base,username:"late"})).rejects.toThrow("TOO_MANY_ATTEMPTS");
+  });
+});
