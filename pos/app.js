@@ -549,7 +549,7 @@ function invoiceHTML(inv, opts = {}) {
         ${rows}
         ${sumRow(`المجموع (Subtotal) — عدد الوحدات: ${qty}`, inv.subtotal)}
         ${extras}
-        ${sumRow('الإجمالي المستحق · ر.ق / TOTAL QAR', inv.total, 'total')}
+        ${sumRow(thermal ? 'الإجمالي · TOTAL QAR' : 'الإجمالي المستحق · ر.ق / TOTAL QAR', inv.total, 'total')}
       </tbody>
     </table>
 
@@ -703,7 +703,8 @@ table.inv-t tr{break-inside:avoid;page-break-inside:avoid}
 .inv.thermal .inv-foot{font-size:6pt}
 /* Thermal paper prints black only: greys, tints and hairlines fade to nothing, small light type too. */
 .inv.thermal,.inv.thermal *{color:#000!important;background:transparent!important;box-shadow:none!important;border-color:#000!important}
-.inv.thermal{max-width:none;width:72mm;padding:1.5mm 2mm;font-size:9pt;font-weight:500}
+/* 68 mm of content centred on the 72 mm page: some 80 mm drivers print a little narrower than 72. */
+.inv.thermal{max-width:none;width:68mm;margin:0 auto;padding:1.5mm 0;font-size:9pt;font-weight:500}
 .inv.thermal .inv-title .ar{font-size:12pt;font-weight:800}
 .inv.thermal .inv-title .en,.inv.thermal .inv-badge .lab{font-size:7.5pt;font-weight:600}
 .inv.thermal .inv-badge .no{font-size:16pt;font-weight:800}
@@ -718,6 +719,16 @@ table.inv-t tr{break-inside:avoid;page-break-inside:avoid}
 .inv.thermal .inv-verify .vt{font-size:7.5pt}
 .inv.thermal .inv-foot{font-size:7.5pt;font-weight:500}
 .inv.thermal .inv-foot .l2{font-size:9pt;font-weight:700}
+/* The drawn logo as an outline: a solid disc comes out of a thermal head as a grey dither. */
+.inv.thermal .inv-logo circle:first-child{fill:#fff;stroke:#000;stroke-width:4}
+.inv.thermal .inv-logo circle+circle{stroke:#000}
+.inv.thermal .inv-logo text{fill:#000;font-weight:700}
+/* Amounts stay on one line, so the total never breaks in two. */
+.inv.thermal table.inv-t td.c{white-space:nowrap}
+.inv.thermal table.inv-t tr.total td{font-size:9pt}
+.inv.thermal table.inv-t tr.total td.c{font-size:11pt}
+.inv.thermal .inv-verify code{font-size:7pt;font-weight:700}
+.inv.thermal .inv-foot .l2 span{font-size:8pt;font-weight:500}
 @media screen and (max-width:480px){
   .inv:not(.thermal){padding:12px}
   .inv:not(.thermal) .inv-top{flex-wrap:wrap;gap:8px}
@@ -880,7 +891,7 @@ $('#invBody').addEventListener('click', e => {
 /* What to cook and nothing about money, in type large enough to read at the pass.
    The English name stays under each item for cooks who do not read Arabic. */
 const KITCHEN_CSS = `${PRINT_FONT}
-.kt{width:72mm;padding:1.5mm 2mm;font-family:Cairo,Tahoma,sans-serif;color:#000}
+.kt{width:68mm;margin:0 auto;padding:1.5mm 0;font-family:Cairo,Tahoma,sans-serif;color:#000}
 .kt-h{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #000;padding-bottom:1.5mm}
 .kt-h span{font-size:10pt;font-weight:700}
 .kt-h b{font-size:22pt;font-weight:800;line-height:1}
