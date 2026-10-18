@@ -34,7 +34,7 @@ const DEFAULT_SETTINGS = {
 /* الأصناف — cat: meals (وجبات) | banquet (ولائم) | extra (إضافات)
    price بالريال القطري · weight بالجرام · state: طازج/مجمد · origin: المنشأ */
 /* Added after devices were already set up: normalize() offers each to existing devices once. */
-const ADDED_PRODUCTS = ['وجبة سمك', 'صالونة ربيان', 'صالونة لحم', 'صالونة دجاج', 'وجبة دجاج', 'وجبة لحم أسترالي'];
+const ADDED_PRODUCTS = ['وجبة سمك', 'صالونة ربيان', 'صالونة لحم', 'صالونة دجاج', 'وجبة دجاج', 'وجبة لحم أسترالي', 'خروف صغير', 'خروف وسط'];
 
 const DEFAULT_PRODUCTS = [
   // ---------- منيو الوجبات ----------
@@ -92,6 +92,8 @@ const DEFAULT_PRODUCTS = [
   { ar: 'طبخ خروف + عيش أبيض',               en: 'Kharoof + Aish Abiad',        cat: 'banquet', price: 400,  weight: 0, state: '', origin: '' },
   { ar: 'طبخ خروف استرالي مكبوس',            en: 'Australian Kharoof Magbus',   cat: 'banquet', price: 450,  weight: 0, state: '', origin: 'استرالي' },
   { ar: 'طبخ خروف استرالي برياني',           en: 'Australian Kharoof Biryani',  cat: 'banquet', price: 550,  weight: 0, state: '', origin: 'استرالي' },
+  { ar: 'خروف صغير',                        en: 'Small Kharoof',               cat: 'banquet', price: 1350, weight: 0, state: '', origin: '' },
+  { ar: 'خروف وسط',                         en: 'Medium Kharoof',              cat: 'banquet', price: 1500, weight: 0, state: '', origin: '' },
   { ar: 'كرتون دجاج برياني (الدجاج من المطبخ)', en: 'Chicken Biryani Carton (kitchen)', cat: 'banquet', price: 500, weight: 0, state: '', origin: '' },
   { ar: 'كرتون دجاج برياني (الدجاج من الزبون)', en: 'Chicken Biryani Carton (customer)', cat: 'banquet', price: 350, weight: 0, state: 'مجمد', origin: '' },
   { ar: 'كرتون دجاج مكبوس (الدجاج من المطبخ)',  en: 'Chicken Magbus Carton (kitchen)',  cat: 'banquet', price: 500, weight: 0, state: '', origin: '' },
