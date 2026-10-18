@@ -608,9 +608,11 @@ function printDoc(bodyHTML, css, pageRule) {
   });
 }
 
-function printInvoice(inv) {
-  const thermal = db.settings.printSize === 'thermal';
-  return printDoc(invoiceHTML(inv), INVOICE_CSS,
+// The receipt printer takes the roll layout; the official A5 copy (PDF, electronic file, ministry
+// requests) asks for size 'a5' explicitly.
+function printInvoice(inv, size = db.settings.printSize) {
+  const thermal = size === 'thermal';
+  return printDoc(invoiceHTML(inv, { size }), INVOICE_CSS,
     thermal ? 'size:auto;margin:2mm' : 'size:A5;margin:7mm');
 }
 
@@ -887,7 +889,7 @@ $('#vmKitchen').addEventListener('click', () => viewing && printKitchen(viewing)
 $('#vmPdf').addEventListener('click', () => {
   if (!viewing) return;
   toast(t('في نافذة الطباعة اختر الوجهة: "حفظ كـ PDF" أو "Microsoft Print to PDF"'));
-  setTimeout(() => printInvoice(viewing), 900);
+  setTimeout(() => printInvoice(viewing, 'a5'), 900);
 });
 $('#vmHtml').addEventListener('click', () => viewing && downloadInvoiceFile(viewing));
 

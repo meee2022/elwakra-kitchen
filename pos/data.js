@@ -24,7 +24,7 @@ const DEFAULT_SETTINGS = {
   currency: 'ر.ق',
   currencyEn: 'QR',
   nextInvoiceNo: 95099,   // يكمل بعد آخر رقم في الدفتر الورقي (95098)
-  printSize: 'a5',        // a5 | thermal
+  printSize: 'thermal',   // thermal (80 mm receipt printer) | a5; the PDF and electronic copy are always A5
   showTafqeet: true,      // كتابة المبلغ بالحروف
   kitchenTicket: false,   // print a kitchen ticket with every saved order
   vatEnabled: false,      // ضريبة القيمة المضافة (غير مفعّلة في قطر حالياً)
