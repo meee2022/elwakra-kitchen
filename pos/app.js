@@ -581,7 +581,8 @@ function printDoc(bodyHTML, css, pageRule) {
   return new Promise(done => {
   const f = document.createElement('iframe');
   f.setAttribute('aria-hidden', 'true');
-  f.style.cssText = 'position:fixed;left:-10000px;top:0;width:1px;height:1px;border:0';
+  // 72 mm wide (≈272px) so a roll ticket can be measured at its printed width.
+  f.style.cssText = 'position:fixed;left:-10000px;top:0;width:272px;height:10px;border:0';
   document.body.appendChild(f);
 
   const d = f.contentDocument;
@@ -589,12 +590,18 @@ function printDoc(bodyHTML, css, pageRule) {
   d.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><style>
     *{box-sizing:border-box} body{margin:0;background:#fff;
       font-family:"Segoe UI",Tahoma,Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    @page{${pageRule}}
+    ${pageRule === 'roll' ? '' : `@page{${pageRule}}`}
     ${css}</style></head><body>${bodyHTML}</body></html>`);
   d.close();
 
   const cleanup = () => { done(); setTimeout(() => f.remove(), 800); };
   const go = () => {
+    // A receipt roll has no page height: size the page to the content, so the printer neither
+    // shrinks it onto a sheet nor feeds blank paper above and below.
+    if (pageRule === 'roll') {
+      const mm = Math.ceil(d.documentElement.scrollHeight * 25.4 / 96) + 4;
+      d.head.insertAdjacentHTML('beforeend', `<style>@page{size:72mm ${mm}mm;margin:0}</style>`);
+    }
     f.contentWindow.addEventListener('afterprint', cleanup, { once: true });
     f.contentWindow.focus();
     f.contentWindow.print();
@@ -613,7 +620,7 @@ function printDoc(bodyHTML, css, pageRule) {
 function printInvoice(inv, size = db.settings.printSize) {
   const thermal = size === 'thermal';
   return printDoc(invoiceHTML(inv, { size }), INVOICE_CSS,
-    thermal ? 'size:auto;margin:2mm' : 'size:A5;margin:7mm');
+    thermal ? 'roll' : 'size:A5;margin:7mm');
 }
 
 /* تنسيقات الفاتورة مضمّنة نصياً — عشان الملف المصدَّر يفتح على أي جهاز
@@ -689,6 +696,23 @@ table.inv-t tr{break-inside:avoid;page-break-inside:avoid}
 .inv.thermal .inv-bottom{margin-top:8px}
 .inv.thermal .inv-verify img{width:18mm;height:18mm}
 .inv.thermal .inv-foot{font-size:6pt}
+/* Thermal paper prints black only: greys, tints and hairlines fade to nothing, small light type too. */
+.inv.thermal,.inv.thermal *{color:#000!important;background:transparent!important;box-shadow:none!important;border-color:#000!important}
+.inv.thermal{max-width:none;width:72mm;padding:1.5mm 2mm;font-size:9pt;font-weight:500}
+.inv.thermal .inv-title .ar{font-size:12pt;font-weight:800}
+.inv.thermal .inv-title .en,.inv.thermal .inv-badge .lab{font-size:7.5pt;font-weight:600}
+.inv.thermal .inv-badge .no{font-size:16pt;font-weight:800}
+.inv.thermal .inv-strip div{font-size:8.5pt;font-weight:600}
+.inv.thermal .inv-strip i{font-size:7pt;font-weight:600}
+.inv.thermal .inv-cust{font-size:9pt;border:1px solid #000}
+.inv.thermal table.inv-t td{font-size:8.5pt;font-weight:600}
+.inv.thermal table.inv-t th{font-size:7.5pt;font-weight:700;line-height:1.25}
+.inv.thermal table.inv-t th small,.inv.thermal table.inv-t td .en{font-size:7pt;font-weight:500}
+.inv.thermal table.inv-t tr.total td{font-size:10.5pt;font-weight:800;border-top:2px solid #000;border-bottom:2px solid #000}
+.inv.thermal .inv-tafqeet{font-size:8pt;font-weight:600}
+.inv.thermal .inv-verify .vt{font-size:7.5pt}
+.inv.thermal .inv-foot{font-size:7.5pt;font-weight:500}
+.inv.thermal .inv-foot .l2{font-size:9pt;font-weight:700}
 @media screen and (max-width:480px){
   .inv:not(.thermal){padding:12px}
   .inv:not(.thermal) .inv-top{flex-wrap:wrap;gap:8px}
@@ -851,7 +875,7 @@ $('#invBody').addEventListener('click', e => {
 /* What to cook and nothing about money, in type large enough to read at the pass.
    The English name stays under each item for cooks who do not read Arabic. */
 const KITCHEN_CSS = `${PRINT_FONT}
-.kt{width:72mm;padding:1mm 2mm;font-family:Cairo,Tahoma,sans-serif;color:#000}
+.kt{width:72mm;padding:1.5mm 2mm;font-family:Cairo,Tahoma,sans-serif;color:#000}
 .kt-h{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #000;padding-bottom:1.5mm}
 .kt-h span{font-size:10pt;font-weight:700}
 .kt-h b{font-size:22pt;font-weight:800;line-height:1}
@@ -875,7 +899,7 @@ function kitchenHTML(inv) {
     <div class="kt-f">عدد الوحدات: ${units} · <bdi dir="ltr">Items: ${units}</bdi></div>
   </div>`;
 }
-function printKitchen(inv) { return printDoc(kitchenHTML(inv), KITCHEN_CSS, 'size:auto;margin:2mm'); }
+function printKitchen(inv) { return printDoc(kitchenHTML(inv), KITCHEN_CSS, 'roll'); }
 
 let viewing = null;
 function openInvoice(inv) {
