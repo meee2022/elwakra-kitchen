@@ -185,3 +185,16 @@ describe("manager mirror of the cloud",()=>{
     expect(rest.rows.map((r:any)=>r.no)).toEqual([4]);expect(rest.more).toBe(false);
   });
 });
+
+describe("password recovery from a trusted terminal",()=>{
+  it("replaces the hash, signs the account out everywhere and clears its lockout",async()=>{
+    const {t,login}=await setup();
+    const salt2="2".repeat(32),newHash="scrypt:"+salt2+":"+scryptSync("recovered-password",salt2,64).toString("hex");
+    await t.mutation(internal.authSessions.resetPassword,{username:"manager",passwordHash:newHash});
+    await expect(t.query(api.authSessions.me,{token:login.token})).rejects.toThrow("AUTH_REQUIRED");
+    expect((await t.action(api.auth.login,{username:"manager",password})).error).toBe("INVALID_CREDENTIALS");
+    expect((await t.action(api.auth.login,{username:"manager",password:"recovered-password"})).role).toBe("manager");
+    await expect(t.mutation(internal.authSessions.resetPassword,{username:"nobody",passwordHash:newHash})).rejects.toThrow("No such account");
+    await expect(t.mutation(internal.authSessions.resetPassword,{username:"manager",passwordHash:"plain"})).rejects.toThrow("Invalid password hash");
+  });
+});

@@ -99,3 +99,17 @@ export const updateAccount = internalMutation({
     return {};
   }
 });
+
+// Recovery when no manager can sign in. Internal: reachable only from a terminal holding the
+// project's deploy credentials (scripts/reset-password.py), never from the site.
+export const resetPassword = internalMutation({args:{username:v.string(),passwordHash:v.string()},handler:async(ctx,a)=>{
+  if(!/^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/.test(a.passwordHash))throw new Error("Invalid password hash");
+  const user=await ctx.db.query("users").withIndex("by_username",q=>q.eq("username",a.username.trim().toLowerCase())).unique();
+  if(!user)throw new Error("No such account");
+  await ctx.db.patch(user._id,{passwordHash:a.passwordHash,disabled:false});
+  for(const s of await ctx.db.query("sessions").collect()) if(s.userId===user._id) await ctx.db.delete(s._id);
+  const attempt=await ctx.db.query("loginAttempts").withIndex("by_bucket",q=>q.eq("bucket","user:"+user._id)).unique();
+  if(attempt)await ctx.db.delete(attempt._id);
+  console.log(`account ${user.username} password reset from a terminal`);
+  return {username:user.username};
+}});
