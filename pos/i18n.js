@@ -346,6 +346,10 @@ const I18N = {
   'آخر فاتورة وصلت: ': 'Last invoice received: ',
   'لم تصل أي فاتورة بعد': 'No invoices received yet',
 
+  /* Kitchen ticket */
+  'ورقة المطبخ مع كل طلب': 'Kitchen ticket with every order',
+  'ورقة المطبخ': 'Kitchen Ticket',
+
   /* Accounts */
   'نشط': 'Active',
   'حسابات الدخول': 'Sign-in Accounts',

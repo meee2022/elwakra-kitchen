@@ -9,8 +9,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="app.css?v=32">
-<link rel="stylesheet" href="auth.css?v=32">
+<link rel="stylesheet" href="app.css?v=33">
+<link rel="stylesheet" href="auth.css?v=33">
 </head>
 <body>
 
@@ -312,6 +312,9 @@
             <div><label class="f" for="sTafqeet" data-i18n="كتابة المبلغ بالحروف">كتابة المبلغ بالحروف</label>
               <select id="sTafqeet"><option value="1" data-i18n="نعم">نعم</option><option value="0" data-i18n="لا">لا</option></select>
             </div>
+            <div><label class="f" for="sKitchen" data-i18n="ورقة المطبخ مع كل طلب">ورقة المطبخ مع كل طلب</label>
+              <select id="sKitchen"><option value="0" data-i18n="لا">لا</option><option value="1" data-i18n="نعم">نعم</option></select>
+            </div>
             <div><label class="f" for="sVat" data-i18n="ضريبة القيمة المضافة">ضريبة القيمة المضافة</label>
               <select id="sVat"><option value="0" data-i18n="غير مفعّلة">غير مفعّلة</option><option value="1" data-i18n="مفعّلة">مفعّلة</option></select>
             </div>
@@ -424,6 +427,7 @@
     <div class="modal-b" id="vmBody" style="background:#f4f0eb"></div>
     <div class="modal-f">
       <button class="btn btn-primary" id="vmPrint" data-i18n="طباعة">طباعة</button>
+      <button class="btn" id="vmKitchen" data-i18n="ورقة المطبخ">ورقة المطبخ</button>
       <button class="btn btn-dark" id="vmPdf" data-i18n="حفظ كملف PDF">حفظ كملف PDF</button>
       <button class="btn" id="vmHtml" data-i18n="تنزيل نسخة إلكترونية (HTML)">تنزيل نسخة إلكترونية (HTML)</button>
       <button class="btn" data-close data-i18n="إغلاق">إغلاق</button>
@@ -464,12 +468,12 @@
 
 <div id="toast" role="status" aria-live="polite"></div>
 
-<script src="auth.js?v=32"></script>
-<script src="i18n.js?v=32"></script>
-<script src="lock.js?v=32"></script>
-<script src="data.js?v=32"></script>
-<script src="qr.js?v=32"></script>
-<script src="sync.js?v=32"></script>
-<script src="app.js?v=32"></script>
+<script src="auth.js?v=33"></script>
+<script src="i18n.js?v=33"></script>
+<script src="lock.js?v=33"></script>
+<script src="data.js?v=33"></script>
+<script src="qr.js?v=33"></script>
+<script src="sync.js?v=33"></script>
+<script src="app.js?v=33"></script>
 </body>
 </html>

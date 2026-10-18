@@ -415,6 +415,8 @@ async function writeInvoice(print, type) {
   Sync.run(false);
   clearCart();
   toast(I18n.t2('تم حفظ الفاتورة رقم {0} — {1} ر.ق', inv.no, money(inv.total)), 'ok');
+  // Kitchen first: that copy keeps the order moving.
+  if (db.settings.kitchenTicket) await printKitchen(inv);
   if (print) printInvoice(inv);
 }
 
@@ -576,6 +578,7 @@ function invoiceHTML(inv, opts = {}) {
 /** يطبع داخل إطار معزول يحتوي المستند وحده — أسرع بكثير من طباعة صفحة التطبيق
     كاملة، ويمنع تسرّب تنسيقات الواجهة إلى الورق. */
 function printDoc(bodyHTML, css, pageRule) {
+  return new Promise(done => {
   const f = document.createElement('iframe');
   f.setAttribute('aria-hidden', 'true');
   f.style.cssText = 'position:fixed;left:-10000px;top:0;width:1px;height:1px;border:0';
@@ -590,7 +593,7 @@ function printDoc(bodyHTML, css, pageRule) {
     ${css}</style></head><body>${bodyHTML}</body></html>`);
   d.close();
 
-  const cleanup = () => setTimeout(() => f.remove(), 800);
+  const cleanup = () => { done(); setTimeout(() => f.remove(), 800); };
   const go = () => {
     f.contentWindow.addEventListener('afterprint', cleanup, { once: true });
     f.contentWindow.focus();
@@ -602,11 +605,12 @@ function printDoc(bodyHTML, css, pageRule) {
   const imgs = [...d.images];
   Promise.all([d.fonts.ready, ...imgs.map(i => i.complete ? null :
     new Promise(r => { i.onload = i.onerror = r; }))]).then(() => setTimeout(go, 20));
+  });
 }
 
 function printInvoice(inv) {
   const thermal = db.settings.printSize === 'thermal';
-  printDoc(invoiceHTML(inv), INVOICE_CSS,
+  return printDoc(invoiceHTML(inv), INVOICE_CSS,
     thermal ? 'size:auto;margin:2mm' : 'size:A5;margin:7mm');
 }
 
@@ -841,6 +845,36 @@ $('#invBody').addEventListener('click', e => {
   }
 });
 
+/* ---------- ورقة المطبخ ---------- */
+/* What to cook and nothing about money, in type large enough to read at the pass.
+   The English name stays under each item for cooks who do not read Arabic. */
+const KITCHEN_CSS = `${PRINT_FONT}
+.kt{width:72mm;padding:1mm 2mm;font-family:Cairo,Tahoma,sans-serif;color:#000}
+.kt-h{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #000;padding-bottom:1.5mm}
+.kt-h span{font-size:10pt;font-weight:700}
+.kt-h b{font-size:22pt;font-weight:800;line-height:1}
+.kt-meta{font-size:10pt;margin:1.5mm 0 1mm}
+.kt-items{width:100%;border-collapse:collapse}
+.kt-items td{padding:1.8mm 0;border-bottom:1px dashed #000;vertical-align:top}
+.kt-q{width:15mm;font-size:18pt;font-weight:800;text-align:center;white-space:nowrap}
+.kt-n{font-size:14pt;font-weight:700;line-height:1.3}
+.kt-n small{display:block;font-size:9.5pt;font-weight:500}
+.kt-note{margin-top:2mm;border:2px solid #000;padding:1.5mm 2mm;font-size:12pt;font-weight:700}
+.kt-f{margin-top:2mm;font-size:9.5pt;text-align:center}`;
+function kitchenHTML(inv) {
+  const units = inv.items.reduce((n, it) => n + it.qty, 0);
+  return `<div class="kt">
+    <div class="kt-h"><span>طلب مطبخ · KITCHEN</span><b dir="ltr">#${inv.no}</b></div>
+    <div class="kt-meta">${ltr(inv.time)} · ${ltr(fmtDate(inv.date))}${inv.customer ? ' · ' + esc(inv.customer) : ''}</div>
+    <table class="kt-items">${inv.items.map(it => `<tr>
+      <td class="kt-q"><bdi dir="ltr">${it.qty} ×</bdi></td>
+      <td class="kt-n">${esc(it.ar)}${it.en ? `<small dir="ltr">${esc(it.en)}</small>` : ''}</td></tr>`).join('')}</table>
+    ${inv.note ? `<div class="kt-note">ملاحظة / Note: ${esc(inv.note)}</div>` : ''}
+    <div class="kt-f">عدد الوحدات: ${units} · <bdi dir="ltr">Items: ${units}</bdi></div>
+  </div>`;
+}
+function printKitchen(inv) { return printDoc(kitchenHTML(inv), KITCHEN_CSS, 'size:auto;margin:2mm'); }
+
 let viewing = null;
 function openInvoice(inv) {
   viewing = inv;
@@ -849,6 +883,7 @@ function openInvoice(inv) {
   $('#viewModal').classList.add('open');
 }
 $('#vmPrint').addEventListener('click', () => viewing && printInvoice(viewing));
+$('#vmKitchen').addEventListener('click', () => viewing && printKitchen(viewing));
 $('#vmPdf').addEventListener('click', () => {
   if (!viewing) return;
   toast(t('في نافذة الطباعة اختر الوجهة: "حفظ كـ PDF" أو "Microsoft Print to PDF"'));
@@ -1167,6 +1202,7 @@ function fillSettings() {
   $('#sNextNo').value = s.nextInvoiceNo;
   $('#sPrintSize').value = s.printSize;
   $('#sTafqeet').value = s.showTafqeet ? '1' : '0';
+  $('#sKitchen').value = s.kitchenTicket ? '1' : '0';
   $('#sVat').value = s.vatEnabled ? '1' : '0';
   $('#sVatRate').value = s.vatRate;
   renderLogoPreview();
@@ -1193,6 +1229,7 @@ $('#btnSaveSettings').addEventListener('click', () => {
   s.nextInvoiceNo = Math.max(1, Math.floor(+$('#sNextNo').value || 1));
   s.printSize = $('#sPrintSize').value;
   s.showTafqeet = $('#sTafqeet').value === '1';
+  s.kitchenTicket = $('#sKitchen').value === '1';
   s.vatEnabled = $('#sVat').value === '1';
   s.vatRate = Math.max(0, +$('#sVatRate').value || 0);
   saveSyncSettings();
