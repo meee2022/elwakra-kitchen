@@ -16,3 +16,4 @@ pos/invoice-preview.html
 # أسرار
 .env
 .env.local
+.env.prod
