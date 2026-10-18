@@ -70,7 +70,7 @@ html.auth-pending body>:not(#authGate){display:none!important}
 .auth-box input:focus{outline:none; background:#fff; border-color:var(--a-primary); box-shadow:0 0 0 4px rgba(148,59,37,0.13)}
 
 /* The show/hide control lives inside the field rather than beside it */
-.auth-password{position:relative}
+.auth-password{position:relative; direction:ltr}   /* match the LTR field so the button sits over its padding */
 .auth-password input{padding-inline-end:108px}
 .auth-password button{
   position:absolute; inset-inline-end:6px; top:6px; height:36px; padding:0 10px;
