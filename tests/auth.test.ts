@@ -198,3 +198,40 @@ describe("password recovery from a trusted terminal",()=>{
     await expect(t.mutation(internal.authSessions.resetPassword,{username:"manager",passwordHash:"plain"})).rejects.toThrow("Invalid password hash");
   });
 });
+
+describe("shared menu",()=>{
+  const item=(over:object={})=>({id:"p1",ar:"صالونة لحم",en:"Salona Laham",cat:"meals",price:45,weight:0,state:"",origin:"",active:1,...over});
+  const org={nameAr:"مطابخ الجنوب",crNumber:"27781/3"};
+  it("lets every account read it but only managers change it",async()=>{
+    const {t,login}=await setup("cashier");
+    expect(await t.query(api.catalog.get,{token:login.token})).toBeNull();
+    await expect(t.mutation(api.catalog.save,{token:login.token,baseVersion:0,products:[item()],org})).rejects.toThrow("FORBIDDEN");
+    await expect(t.query(api.catalog.get,{token:"0".repeat(64)})).rejects.toThrow("AUTH_REQUIRED");
+  });
+  it("versions every save and refuses one made on an outdated copy",async()=>{
+    const {t,login}=await setup();const token=login.token;
+    expect(await t.mutation(api.catalog.save,{token,baseVersion:0,products:[item()],org})).toEqual({version:1});
+    expect(await t.mutation(api.catalog.save,{token,baseVersion:1,products:[item({price:50})],org})).toEqual({version:2});
+    await expect(t.mutation(api.catalog.save,{token,baseVersion:1,products:[item({price:99})],org})).rejects.toThrow("CATALOG_CONFLICT");
+    const got=await t.query(api.catalog.get,{token});
+    expect(got?.version).toBe(2);expect(got?.products[0].price).toBe(50);expect(got?.org.crNumber).toBe("27781/3");
+  });
+  it("rejects malformed items and unknown organisation fields",async()=>{
+    const {t,login}=await setup();const token=login.token;
+    for(const bad of [item({ar:" "}),item({price:-1}),item({price:NaN}),item({cat:"drinks"})])
+      await expect(t.mutation(api.catalog.save,{token,baseVersion:0,products:[bad],org})).rejects.toThrow("INVALID_CATALOG");
+    await expect(t.mutation(api.catalog.save,{token,baseVersion:0,products:[item()],org:{...org,logo:"x"}})).rejects.toThrow("INVALID_CATALOG");
+  });
+});
+
+describe("public invoice check behind the QR",()=>{
+  it("confirms an invoice only with its fingerprint and reveals nothing about the customer",async()=>{
+    const {t,login}=await setup();
+    await t.mutation(api.invoices.push,{token:login.token,invoices:[{...invoice,uid:"STDK-1-95200-20261018",no:95200,customer:"Private Name",phone:"5555",hash:"ABC1234",org:{nameAr:"مطابخ الجنوب",nameEn:"Southern"}}]});
+    const ok=await t.query(api.invoices.verify,{uid:"STDK-1-95200-20261018",hash:"ABC1234"});
+    expect(ok).toMatchObject({found:true,no:95200,total:10,status:"active",nameAr:"مطابخ الجنوب"});
+    expect(JSON.stringify(ok)).not.toContain("Private Name");expect(JSON.stringify(ok)).not.toContain("5555");
+    expect(await t.query(api.invoices.verify,{uid:"STDK-1-95200-20261018",hash:"WRONG"})).toEqual({found:false});
+    expect(await t.query(api.invoices.verify,{uid:"nope",hash:"ABC1234"})).toEqual({found:false});
+  });
+});

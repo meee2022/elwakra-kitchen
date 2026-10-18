@@ -17,6 +17,7 @@ const invoiceItem = v.object({
 export default defineSchema({
   users: defineTable({ username: v.string(), passwordHash: v.string(), role: v.union(v.literal("manager"), v.literal("cashier")), disabled: v.boolean() }).index("by_username", ["username"]),
   sessions: defineTable({ tokenHash: v.string(), userId: v.id("users"), expiresAt: v.number() }).index("by_token", ["tokenHash"]),
+  catalog: defineTable({ products: v.array(v.any()), org: v.any(), version: v.number(), updatedAt: v.number(), updatedBy: v.string() }),   // one shared menu, see catalog.ts
   loginAttempts: defineTable({ bucket: v.string(), count: v.number(), until: v.number() }).index("by_bucket", ["bucket"]),
   invoices: defineTable({
     // المعرّف الفريد الصادر من نقطة البيع — مفتاح المطابقة عند المزامنة

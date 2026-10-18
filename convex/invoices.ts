@@ -97,6 +97,19 @@ export const list = query({
   },
 });
 
+/** Public check behind the QR on printed invoices: no account needed, an exact fingerprint
+    match required, and nothing about the customer or the items in the answer. */
+export const verify = query({
+  args: { uid: v.string(), hash: v.string() },
+  handler: async (ctx, a) => {
+    if (a.uid.length > 80 || a.hash.length > 20) return { found: false };
+    const r = await ctx.db.query("invoices").withIndex("by_uid", (q) => q.eq("uid", a.uid)).unique();
+    if (!r || r.hash !== a.hash) return { found: false };
+    return { found: true, no: r.no, date: r.date, time: r.time, total: r.total, type: r.type, status: r.status,
+             nameAr: String(r.org?.nameAr ?? ""), nameEn: String(r.org?.nameEn ?? "") };
+  },
+});
+
 /** Invoices that arrived or changed after `since`, oldest first, so a manager's device can mirror the cloud. */
 export const changes = query({
   args: { token: v.string(), since: v.number(), limit: v.optional(v.number()) },
