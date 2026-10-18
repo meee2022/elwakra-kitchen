@@ -4,8 +4,24 @@
     {
       "name": "pos",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8777", "--directory", "pos"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8777",
+        "--directory",
+        "pos"
+      ],
       "port": 8777
+    },
+    {
+      "name": "site",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8778"
+      ],
+      "port": 8778
     }
   ]
 }

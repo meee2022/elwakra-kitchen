@@ -98,15 +98,18 @@ export const list = query({
 });
 
 /** Public check behind the QR on printed invoices: no account needed, an exact fingerprint
-    match required, and nothing about the customer or the items in the answer. */
+    match required, and nothing about the customer (name, phone, note) in the answer. */
 export const verify = query({
   args: { uid: v.string(), hash: v.string() },
   handler: async (ctx, a) => {
     if (a.uid.length > 80 || a.hash.length > 20) return { found: false };
     const r = await ctx.db.query("invoices").withIndex("by_uid", (q) => q.eq("uid", a.uid)).unique();
     if (!r || r.hash !== a.hash) return { found: false };
-    return { found: true, no: r.no, date: r.date, time: r.time, total: r.total, type: r.type, status: r.status,
-             nameAr: String(r.org?.nameAr ?? ""), nameEn: String(r.org?.nameEn ?? "") };
+    // The items and amounts let the checker compare with the paper; who bought is never returned.
+    return { found: true, no: r.no, date: r.date, time: r.time, type: r.type, status: r.status,
+             items: r.items.map(i => ({ ar: i.ar, en: i.en, qty: i.qty, price: i.price })),
+             subtotal: r.subtotal, discount: r.discount, delivery: r.delivery, vatRate: r.vatRate, vat: r.vat, total: r.total,
+             hash: r.hash, nameAr: String(r.org?.nameAr ?? ""), nameEn: String(r.org?.nameEn ?? ""), crNumber: String(r.org?.crNumber ?? "") };
   },
 });
 

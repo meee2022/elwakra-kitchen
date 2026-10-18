@@ -136,6 +136,8 @@ function normalize() {
     }
     offered.push(name);
   }
+  if (offered.length !== (db.settings.offeredProducts || []).length)
+    db.settings.sync = { ...db.settings.sync, menuDirty: true };   // share the new items (managers upload)
   db.settings.offeredProducts = offered;
   if (!Array.isArray(db.invoices)) db.invoices = [];
 }
@@ -461,18 +463,10 @@ function qrFor(inv, scale) {
   return _qrCache.get(key);
 }
 
+/* Scanning the code opens the public check page, which confirms the invoice against the cloud copy. */
+const VERIFY_URL = 'https://stdk.vercel.app/v/';
 function qrPayload(inv) {
-  const o = inv.org || db.settings;
-  return [
-    o.nameAr,
-    o.nameEn,
-    'CR: ' + (o.crNumber || '-'),
-    'INV: ' + inv.no,
-    'DATE: ' + inv.date + ' ' + inv.time,
-    'TOTAL: ' + money(inv.total) + ' QAR',
-    'UID: ' + inv.uid,
-    'HASH: ' + inv.hash
-  ].join('\n');
+  return `${VERIFY_URL}?u=${encodeURIComponent(inv.uid)}&h=${encodeURIComponent(inv.hash)}`;
 }
 
 /* شعار المطبخ — يُرسم متجهياً ليطبع بوضوح بأي مقاس.
@@ -1030,6 +1024,7 @@ $('#pmBody').addEventListener('click', e => {
   else if (confirm(I18n.t2('حذف الصنف "{0}"؟\nالفواتير القديمة لن تتأثر.', p.ar))) {
     db.products = db.products.filter(x => x.id !== p.id);
     save(); renderProducts(); renderProdGrid(); toast(t('تم الحذف'));
+    Sync.menuChanged();
   }
 });
 function openProdModal(p) {
@@ -1054,6 +1049,7 @@ $('#btnProdSave').addEventListener('click', () => {
   else db.products.push({ id: uid(), ...data });
   save(); closeModals(); renderProducts(); renderProdGrid();
   toast(t(editingProd ? 'تم تعديل الصنف' : 'تمت إضافة الصنف'), 'ok');
+  Sync.menuChanged();
 });
 
 /* ══════════════ التقارير ══════════════ */
@@ -1262,6 +1258,7 @@ function fillSettings() {
 }
 $('#btnSaveSettings').addEventListener('click', () => {
   const s = db.settings;
+  const orgChanged = Object.entries(SETTINGS_MAP).some(([sel, key]) => (s[key] || '') !== $(sel).value.trim());
   Object.entries(SETTINGS_MAP).forEach(([sel, key]) => s[key] = $(sel).value.trim());
   s.nextInvoiceNo = Math.max(1, Math.floor(+$('#sNextNo').value || 1));
   s.printSize = $('#sPrintSize').value;
@@ -1270,7 +1267,8 @@ $('#btnSaveSettings').addEventListener('click', () => {
   s.vatEnabled = $('#sVat').value === '1';
   s.vatRate = Math.max(0, +$('#sVatRate').value || 0);
   saveSyncSettings();
-  applyBranding(); clearCart(); Sync.run(false);
+  applyBranding(); clearCart();
+  if (orgChanged) Sync.menuChanged(); else Sync.run(false);
   toast(t('تم حفظ الإعدادات'), 'ok');
 });
 
@@ -1409,6 +1407,12 @@ $('#btnWipe').addEventListener('click', () => {
   localStorage.removeItem(STORE_KEY);
   if (idb) { idb.close(); indexedDB.deleteDatabase(IDB_NAME); }
   setTimeout(() => location.reload(), 250);
+});
+
+// A newer shared menu arrived (see Sync.syncMenu): redraw wherever items or the establishment show.
+addEventListener('menu-pulled', () => {
+  renderCatTabs(); renderProdGrid(); applyBranding();
+  if (Auth.isManager()) { renderProducts(); if (!$('#page-settings').classList.contains('active')) fillSettings(); }
 });
 
 // Invoices that reached this device from the cloud (see Sync.pull): show them wherever they are listed.

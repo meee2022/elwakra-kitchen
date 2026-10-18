@@ -93,6 +93,46 @@ const Sync = (function () {
     return changed;
   }
 
+  /* The shared menu (items, prices, establishment details): every device follows the cloud copy,
+     and a manager's edits go up first. The first manager to find the cloud empty seeds it. */
+  const ORG_KEYS = ['nameAr', 'nameEn', 'crNumber', 'entityNumber', 'taxNumber', 'ownerName', 'tel', 'mobile', 'poBox', 'city', 'sloganAr', 'activity'];
+  const menuForWire = () => ({
+    products: db.products.map(p => ({
+      id: String(p.id), ar: String(p.ar), en: String(p.en || ''), cat: String(p.cat), price: Number(p.price) || 0,
+      weight: Number(p.weight) || 0, state: String(p.state || ''), origin: String(p.origin || ''), active: p.active ? 1 : 0
+    })),
+    org: Object.fromEntries(ORG_KEYS.map(k => [k, String(db.settings[k] || '')]))
+  });
+
+  /** Called after a manager changes items, prices or establishment details. */
+  function menuChanged() { cfg().menuDirty = true; save(); run(false); }
+
+  async function syncMenu() {
+    const c = cfg();
+    if (Auth.isManager() && c.menuDirty) {
+      try {
+        const { version } = await call('catalog:save', { baseVersion: c.menuVersion || 0, ...menuForWire() }, 'mutation');
+        c.menuVersion = version; c.menuDirty = false; save();
+        return;
+      } catch (e) {
+        if (!e.message.includes('CATALOG_CONFLICT')) throw e;
+        c.menuDirty = false;   // another manager saved first: take theirs below
+        toast(t('عدّل مدير آخر الأصناف في نفس الوقت — تم تحديث القائمة، أعد تعديلك.'), 'err');
+      }
+    }
+    const doc = await call('catalog:get', {});
+    if (!doc) {
+      if (Auth.isManager()) { c.menuVersion = 0; c.menuDirty = true; return syncMenu(); }
+      return;
+    }
+    if (doc.version === c.menuVersion) return;
+    db.products = doc.products;
+    ORG_KEYS.forEach(k => { if (k in doc.org) db.settings[k] = doc.org[k]; });
+    c.menuVersion = doc.version;
+    save();
+    dispatchEvent(new Event('menu-pulled'));
+  }
+
   async function doRun(manual) {
     if (!navigator.onLine) { render('offline'); return; }
 
@@ -105,6 +145,7 @@ const Sync = (function () {
         chunk.forEach(v => { v._synced = true; v._syncHash = stateHash(v); });
         save();
       }
+      await syncMenu();
       const moved = queue.length + await pull();
       // This runs every few seconds for a manager: only touch storage when something happened.
       if (moved || db.settings.sync.lastError) {
@@ -166,5 +207,5 @@ const Sync = (function () {
     run(false);
   }
 
-  return { start, run, mark, render, test, pending, configured, call };
+  return { start, run, mark, render, test, pending, configured, call, menuChanged };
 })();

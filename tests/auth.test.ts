@@ -229,7 +229,8 @@ describe("public invoice check behind the QR",()=>{
     const {t,login}=await setup();
     await t.mutation(api.invoices.push,{token:login.token,invoices:[{...invoice,uid:"STDK-1-95200-20261018",no:95200,customer:"Private Name",phone:"5555",hash:"ABC1234",org:{nameAr:"مطابخ الجنوب",nameEn:"Southern"}}]});
     const ok=await t.query(api.invoices.verify,{uid:"STDK-1-95200-20261018",hash:"ABC1234"});
-    expect(ok).toMatchObject({found:true,no:95200,total:10,status:"active",nameAr:"مطابخ الجنوب"});
+    expect(ok).toMatchObject({found:true,no:95200,total:10,status:"active",nameAr:"مطابخ الجنوب",items:[{ar:"Test",qty:1,price:10}]});
+    expect(Object.keys(ok)).not.toContain("customer");expect(Object.keys(ok)).not.toContain("phone");expect(Object.keys(ok)).not.toContain("note");
     expect(JSON.stringify(ok)).not.toContain("Private Name");expect(JSON.stringify(ok)).not.toContain("5555");
     expect(await t.query(api.invoices.verify,{uid:"STDK-1-95200-20261018",hash:"WRONG"})).toEqual({found:false});
     expect(await t.query(api.invoices.verify,{uid:"nope",hash:"ABC1234"})).toEqual({found:false});

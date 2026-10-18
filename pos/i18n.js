@@ -346,6 +346,9 @@ const I18N = {
   'آخر فاتورة وصلت: ': 'Last invoice received: ',
   'لم تصل أي فاتورة بعد': 'No invoices received yet',
 
+  /* Shared menu */
+  'عدّل مدير آخر الأصناف في نفس الوقت — تم تحديث القائمة، أعد تعديلك.': 'Another manager changed the items at the same time. The list was refreshed; please make your change again.',
+
   /* Kitchen ticket */
   'ورقة المطبخ مع كل طلب': 'Kitchen ticket with every order',
   'ورقة المطبخ': 'Kitchen Ticket',
