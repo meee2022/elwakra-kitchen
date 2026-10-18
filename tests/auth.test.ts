@@ -236,3 +236,14 @@ describe("public invoice check behind the QR",()=>{
     expect(await t.query(api.invoices.verify,{uid:"nope",hash:"ABC1234"})).toEqual({found:false});
   });
 });
+
+describe("replacing an invoice after it was issued",()=>{
+  it("keeps the link between the cancelled invoice and its replacement",async()=>{
+    const {t,login}=await setup();const token=login.token;
+    await t.mutation(api.invoices.push,{token,invoices:[{...invoice,uid:"r-1",no:1,hash:"H1"}]});
+    await t.mutation(api.invoices.push,{token,invoices:[{...invoice,uid:"r-2",no:2,hash:"H2",replaces:1},{...invoice,uid:"r-1",no:1,hash:"H1",status:"void",voidReason:"edit",replacedBy:2}]});
+    const rows=await t.run(ctx=>ctx.db.query("invoices").collect());
+    expect(rows.find(r=>r.no===2)?.replaces).toBe(1);
+    expect(rows.find(r=>r.no===1)).toMatchObject({status:"void",replacedBy:2});
+  });
+});

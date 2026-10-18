@@ -46,6 +46,8 @@ export default defineSchema({
     status: v.string(),        // active | void
     voidReason: v.optional(v.string()),
     voidedAt: v.optional(v.string()),
+    replaces: v.optional(v.number()),     // this invoice replaces an earlier one (edit after issue)
+    replacedBy: v.optional(v.number()),   // this cancelled invoice was replaced by that one
 
     hash: v.string(),          // بصمة التحقق المطبوعة على الفاتورة
     org: v.any(),              // لقطة بيانات المنشأة وقت الإصدار

@@ -349,6 +349,13 @@ const I18N = {
   /* Shared menu */
   'عدّل مدير آخر الأصناف في نفس الوقت — تم تحديث القائمة، أعد تعديلك.': 'Another manager changed the items at the same time. The list was refreshed; please make your change again.',
 
+  /* Edit after issue */
+  'إلغاء التعديل': 'Cancel Edit',
+  'في السلة طلب مفتوح — استبداله بأصناف الفاتورة المراد تعديلها؟': 'There is an open order in the cart. Replace it with the items of the invoice to edit?',
+  'سبب تعديل الفاتورة رقم {0}؟\n(عند الحفظ تصدر فاتورة بديلة وتُلغى هذه تلقائياً)': 'Reason for editing invoice {0}?\n(Saving issues a replacement and cancels this one automatically)',
+  'عدّل الأصناف ثم احفظ — ستصدر فاتورة بديلة عن رقم {0}': 'Change the items, then save: a replacement for invoice {0} will be issued',
+  'تعديل الفاتورة رقم {0} — احفظ لإصدار البديلة': 'Editing invoice {0}: save to issue the replacement',
+
   /* Kitchen ticket */
   'ورقة المطبخ مع كل طلب': 'Kitchen ticket with every order',
   'ورقة المطبخ': 'Kitchen Ticket',

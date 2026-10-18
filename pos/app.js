@@ -222,12 +222,13 @@ $('#nav').addEventListener('click', e => {
 
 /* ══════════════ نقطة البيع ══════════════ */
 let cart = [];
+let editingFrom = null;   // { no, reason } while a saved invoice is being replaced
 let activeCat = 'meals';
 const DRAFT_KEY = 'stdk_locked_draft';
 addEventListener('auth-locked', event => {
   if (!cart.length || !event.detail?.username) return;
   const fields = Object.fromEntries(['cName','cPhone','invDate','discount','delivery','invNote'].map(id => [id,document.getElementById(id).value]));
-  try { sessionStorage.setItem(DRAFT_KEY,JSON.stringify({username:event.detail.username,cart,fields})); } catch {}
+  try { sessionStorage.setItem(DRAFT_KEY,JSON.stringify({username:event.detail.username,cart,fields,editingFrom})); } catch {}
 });
 function restoreLockedDraft() {
   try {
@@ -235,7 +236,7 @@ function restoreLockedDraft() {
     if(draft?.username!==Auth.profile().username || !Array.isArray(draft.cart)) return;
     cart=draft.cart;
     for(const id of ['cName','cPhone','invDate','discount','delivery','invNote']) if(draft.fields[id]!=null)document.getElementById(id).value=draft.fields[id];
-    renderCart();sessionStorage.removeItem(DRAFT_KEY);
+    editingFrom=draft.editingFrom||null;renderCart();renderEditBanner();sessionStorage.removeItem(DRAFT_KEY);
   }catch{}
 }
 let gotoSettingsAllowed = false;   // يصبح true للحظة بعد نجاح التحقّق
@@ -372,6 +373,7 @@ function updateTotals() {
 
 function clearCart() {
   cart = [];
+  editingFrom = null; renderEditBanner();
   ['#cName', '#cPhone', '#invNote'].forEach(s => $(s).value = '');
   $('#discount').value = $('#delivery').value = 0;
   $('#invDate').value = todayISO();
@@ -388,6 +390,7 @@ async function saveInvoice(print, type) {
   try { await writeInvoice(print, type); } finally { savingInvoice = false; }
 }
 async function writeInvoice(print, type) {
+  const replacing = editingFrom && db.invoices.find(v => v.no === editingFrom.no && v.status === 'active');
   const paidNow = type !== 'credit';   // card and cash settle on the spot
   const t = currentTotals();
   const s = db.settings;
@@ -406,6 +409,7 @@ async function writeInvoice(print, type) {
     ...t,
     note: $('#invNote').value.trim(),
     status: 'active',
+    ...(replacing ? { replaces: replacing.no } : {}),
     // لقطة من بيانات المنشأة وقت الإصدار — تبقى ثابتة في السجل الرسمي
     org: {
       nameAr: s.nameAr, nameEn: s.nameEn, crNumber: s.crNumber, entityNumber: s.entityNumber,
@@ -421,10 +425,17 @@ async function writeInvoice(print, type) {
   Sync.mark(inv);
   db.invoices.unshift(inv);
   db.settings.nextInvoiceNo = inv.no + 1;
+  // The replacement and the cancellation of what it replaces are written together.
+  const before = replacing && { status: replacing.status, voidReason: replacing.voidReason, voidedAt: replacing.voidedAt, replacedBy: replacing.replacedBy };
+  if (replacing) {
+    Object.assign(replacing, { status: 'void', voidReason: editingFrom.reason || t('تعديل'), voidedAt: now.toISOString(), replacedBy: inv.no });
+    Sync.mark(replacing);
+  }
   if (!(await flush())) {
     // Not on disk: undo, keep the cart, and let the cashier retry instead of losing the sale.
     db.invoices.shift();
     db.settings.nextInvoiceNo = inv.no;
+    if (replacing) { Object.assign(replacing, before); Sync.mark(replacing); }
     return;
   }
   Sync.run(false);
@@ -531,6 +542,8 @@ function invoiceHTML(inv, opts = {}) {
       <div><i>الوقت</i>${ltr(inv.time)}</div>
     </div>
 
+    ${inv.replaces ? `<div class="inv-link">بديلة عن فاتورة رقم <b>${inv.replaces}</b> · Replaces invoice ${inv.replaces}</div>` : ''}
+    ${inv.replacedBy ? `<div class="inv-link">ملغاة — استُبدلت بفاتورة رقم <b>${inv.replacedBy}</b> · Replaced by invoice ${inv.replacedBy}</div>` : ''}
     <div class="inv-cust">
       <span><b>العميل / الجهة · BILL TO</b> ${esc(inv.customer) || (inv.type === 'card' ? 'عميل' : inv.type === 'cash' ? 'عميل نقدي' : 'غير محدد')}</span>
       ${inv.phone ? `<span><b>الجوال</b> ${ltr(inv.phone)}</span>` : ''}
@@ -703,6 +716,7 @@ table.inv-t tr{break-inside:avoid;page-break-inside:avoid}
 .inv.thermal .inv-bottom{margin-top:8px}
 .inv.thermal .inv-verify img{width:18mm;height:18mm}
 .inv.thermal .inv-foot{font-size:6pt}
+.inv-link{margin-top:5px;padding:4px 6px;border:1px solid #913f2c;border-radius:5px;font-size:7.5pt;font-weight:600;color:#913f2c;text-align:center}
 /* Thermal paper prints black only: greys, tints and hairlines fade to nothing, small light type too. */
 .inv.thermal,.inv.thermal *{color:#000!important;background:transparent!important;box-shadow:none!important;border-color:#000!important}
 /* 68 mm of content centred on the 72 mm page: some 80 mm drivers print a little narrower than 72. */
@@ -838,6 +852,7 @@ function renderInvoices() {
         <button class="btn btn-sm" data-v="${v.no}" data-a="view">${t('عرض')}</button>
         <button class="btn btn-sm" data-v="${v.no}" data-a="print">${t('طباعة')}</button>
         ${v.status === 'active' && v.type === 'credit' && !v.paid ? `<button class="btn btn-sm" data-v="${v.no}" data-a="pay">${t('تحصيل')}</button>` : ''}
+        ${v.status === 'active' ? `<button class="btn btn-sm" data-v="${v.no}" data-a="edit">${t('تعديل')}</button>` : ''}
         ${v.status === 'active' ? `<button class="btn btn-sm btn-danger" data-v="${v.no}" data-a="void">${t('إلغاء')}</button>` : ''}
       </td>
     </tr>`).join('')
@@ -855,7 +870,7 @@ const statValue = value => {
 };
 const stat = (lbl, val, sm, cls) => `<div class="stat ${cls}"><div class="lbl">${lbl}</div><div class="val">${statValue(val)}</div><div class="sm">${sm || '&nbsp;'}</div></div>`;
 function statusBadge(v) {
-  if (v.status === 'void') return `<span class="badge b-void">${t('ملغاة')}</span>`;
+  if (v.status === 'void') return `<span class="badge b-void">${t('ملغاة')}${v.replacedBy ? ' → ' + v.replacedBy : ''}</span>`;
   if (v.type === 'card') return `<span class="badge b-card">${t('بطاقة')}</span>`;
   if (v.type === 'cash') return `<span class="badge b-cash">${t('نقداً')}</span>`;
   return v.paid ? `<span class="badge b-paid">${t('آجل — محصّل')}</span>`
@@ -880,6 +895,8 @@ $('#invBody').addEventListener('click', e => {
     inv.paid = true; inv.paidAt = new Date().toISOString();
     Sync.mark(inv); save(); Sync.run(false);
     renderInvoices(); toast(I18n.t2('تم تحصيل الفاتورة {0}', inv.no), 'ok');
+  } else if (a === 'edit') {
+    startEdit(inv);
   } else if (a === 'void') {
     const reason = prompt(I18n.t2('سبب إلغاء الفاتورة رقم {0}؟\n(الفاتورة تبقى محفوظة في السجل كملغاة ولا تُحذف)', inv.no));
     if (reason === null) return;
@@ -888,6 +905,29 @@ $('#invBody').addEventListener('click', e => {
     renderInvoices(); toast(I18n.t2('تم إلغاء الفاتورة {0}', inv.no));
   }
 });
+
+/* ---------- تعديل فاتورة بعد حفظها ---------- */
+/* An issued invoice is never changed in place: it was printed and carries a fingerprint. Editing loads
+   it into the cart; saving issues a replacement and cancels the original, linked both ways.
+   Leaving the edit without saving keeps the original untouched. */
+function startEdit(inv) {
+  if (cart.length && !confirm(t('في السلة طلب مفتوح — استبداله بأصناف الفاتورة المراد تعديلها؟'))) return;
+  const reason = prompt(I18n.t2('سبب تعديل الفاتورة رقم {0}؟\n(عند الحفظ تصدر فاتورة بديلة وتُلغى هذه تلقائياً)', inv.no));
+  if (reason === null) return;
+  clearCart();
+  cart = inv.items.map((it, i) => ({ id: (db.products.find(p => p.ar === it.ar) || {}).id || 'old-' + i, ar: it.ar, en: it.en || '', price: it.price, qty: it.qty }));
+  $('#cName').value = inv.customer || ''; $('#cPhone').value = inv.phone || ''; $('#invNote').value = inv.note || '';
+  $('#discount').value = inv.discount || 0; $('#delivery').value = inv.delivery || 0;
+  editingFrom = { no: inv.no, reason: reason.trim() };
+  renderCart(); renderEditBanner();
+  document.querySelector('#nav [data-page="pos"]').click();
+  toast(I18n.t2('عدّل الأصناف ثم احفظ — ستصدر فاتورة بديلة عن رقم {0}', inv.no));
+}
+function renderEditBanner() {
+  $('#editBanner').hidden = !editingFrom;
+  if (editingFrom) $('#editBannerText').textContent = I18n.t2('تعديل الفاتورة رقم {0} — احفظ لإصدار البديلة', editingFrom.no);
+}
+$('#btnEditCancel').addEventListener('click', () => clearCart());
 
 /* ---------- ورقة المطبخ ---------- */
 /* What to cook and nothing about money, in type large enough to read at the pass.

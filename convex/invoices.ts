@@ -28,6 +28,8 @@ const invoiceFields = {
   status: v.string(),
   voidReason: v.optional(v.string()),
   voidedAt: v.optional(v.string()),
+  replaces: v.optional(v.number()),     // this invoice replaces an earlier one (edit after issue)
+  replacedBy: v.optional(v.number()),   // this cancelled invoice was replaced by that one
   hash: v.string(),
   org: v.any(),
 };

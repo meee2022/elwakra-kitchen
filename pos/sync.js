@@ -48,6 +48,8 @@ const Sync = (function () {
       note: String(v.note || ''), status: String(v.status || 'active'),
       ...(v.voidReason ? { voidReason: String(v.voidReason) } : {}),
       ...(v.voidedAt ? { voidedAt: String(v.voidedAt) } : {}),
+      ...(v.replaces ? { replaces: Number(v.replaces) } : {}),
+      ...(v.replacedBy ? { replacedBy: Number(v.replacedBy) } : {}),
       hash: String(v.hash || ''), org: v.org || {}
     };
   }
