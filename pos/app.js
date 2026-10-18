@@ -132,12 +132,14 @@ function normalize() {
     const i = DEFAULT_PRODUCTS.findIndex(p => p.ar === name);
     if (!db.products.some(p => p.ar === name)) {
       const before = db.products.findIndex(p => p.ar === (DEFAULT_PRODUCTS[i - 1] || {}).ar);   // keep it next to its sibling
-      db.products.splice(before < 0 ? db.products.length : before + 1, 0, { id: uid(), active: 1, ...DEFAULT_PRODUCTS[i] });
+      const item = { id: uid(), active: 1, ...DEFAULT_PRODUCTS[i] };
+      db.products.splice(before < 0 ? db.products.length : before + 1, 0, item);
+      // share it through the menu sync once it starts (managers upload, see Sync.menuChanged)
+      const sc = db.settings.sync || (db.settings.sync = {});
+      sc.menuOps = [...(sc.menuOps || []), { op: 'upsert', item, after: (db.products[before] || {}).id }];
     }
     offered.push(name);
   }
-  if (offered.length !== (db.settings.offeredProducts || []).length)
-    db.settings.sync = { ...db.settings.sync, menuDirty: true };   // share the new items (managers upload)
   db.settings.offeredProducts = offered;
   if (!Array.isArray(db.invoices)) db.invoices = [];
 }
@@ -1035,7 +1037,7 @@ $('#pmBody').addEventListener('click', e => {
   else if (confirm(I18n.t2('حذف الصنف "{0}"؟\nالفواتير القديمة لن تتأثر.', p.ar))) {
     db.products = db.products.filter(x => x.id !== p.id);
     save(); renderProducts(); renderProdGrid(); toast(t('تم الحذف'));
-    Sync.menuChanged();
+    Sync.menuChanged({ op: 'delete', id: p.id });
   }
 });
 function openProdModal(p) {
@@ -1056,11 +1058,12 @@ $('#btnProdSave').addEventListener('click', () => {
     price: Math.max(0, +$('#fPrice').value || 0), weight: +$('#fWeight').value || 0,
     state: $('#fState').value, origin: $('#fOrigin').value.trim(), active: +$('#fActive').value
   };
-  if (editingProd) Object.assign(editingProd, data);
-  else db.products.push({ id: uid(), ...data });
+  const after = (db.products[db.products.length - 1] || {}).id;
+  const item = editingProd ? Object.assign(editingProd, data) : { id: uid(), ...data };
+  if (!editingProd) db.products.push(item);
   save(); closeModals(); renderProducts(); renderProdGrid();
   toast(t(editingProd ? 'تم تعديل الصنف' : 'تمت إضافة الصنف'), 'ok');
-  Sync.menuChanged();
+  Sync.menuChanged({ op: 'upsert', item, after });
 });
 
 /* ══════════════ التقارير ══════════════ */
@@ -1279,7 +1282,8 @@ $('#btnSaveSettings').addEventListener('click', () => {
   s.vatRate = Math.max(0, +$('#sVatRate').value || 0);
   saveSyncSettings();
   applyBranding(); clearCart();
-  if (orgChanged) Sync.menuChanged(); else Sync.run(false);
+  if (orgChanged) Sync.menuChanged({ op: 'org', org: Object.fromEntries(Object.values(SETTINGS_MAP).map(k => [k, String(s[k] || '')])) });
+  else Sync.run(false);
   toast(t('تم حفظ الإعدادات'), 'ok');
 });
 

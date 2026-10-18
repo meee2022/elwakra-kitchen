@@ -96,41 +96,68 @@ const Sync = (function () {
   /* The shared menu (items, prices, establishment details): every device follows the cloud copy,
      and a manager's edits go up first. The first manager to find the cloud empty seeds it. */
   const ORG_KEYS = ['nameAr', 'nameEn', 'crNumber', 'entityNumber', 'taxNumber', 'ownerName', 'tel', 'mobile', 'poBox', 'city', 'sloganAr', 'activity'];
-  const menuForWire = () => ({
-    products: db.products.map(p => ({
-      id: String(p.id), ar: String(p.ar), en: String(p.en || ''), cat: String(p.cat), price: Number(p.price) || 0,
-      weight: Number(p.weight) || 0, state: String(p.state || ''), origin: String(p.origin || ''), active: p.active ? 1 : 0
-    })),
-    org: Object.fromEntries(ORG_KEYS.map(k => [k, String(db.settings[k] || '')]))
+
+  /* A manager's edits are kept as operations and replayed on the latest cloud copy. Replacing the whole
+     list instead lost edits two ways: a sync already under way wrote the older cloud list back over a
+     fresh delete, and a device that had not fetched the newest copy had its save refused and dropped. */
+  function applyOps(menu, ops) {
+    const products = menu.products.map(p => ({ ...p })), org = { ...menu.org };
+    for (const op of ops) {
+      const i = products.findIndex(p => p.id === (op.item ? op.item.id : op.id));
+      if (op.op === 'delete') { if (i >= 0) products.splice(i, 1); }
+      else if (op.op === 'upsert') {
+        if (i >= 0) products[i] = op.item;
+        else {
+          const after = products.findIndex(p => p.id === op.after);
+          products.splice(after < 0 ? products.length : after + 1, 0, op.item);
+        }
+      } else if (op.op === 'org') Object.assign(org, op.org);
+    }
+    return { products, org };
+  }
+  const itemForWire = p => ({
+    id: String(p.id), ar: String(p.ar), en: String(p.en || ''), cat: String(p.cat), price: Number(p.price) || 0,
+    weight: Number(p.weight) || 0, state: String(p.state || ''), origin: String(p.origin || ''), active: p.active ? 1 : 0
   });
 
-  /** Called after a manager changes items, prices or establishment details. */
-  function menuChanged() { cfg().menuDirty = true; save(); run(false); }
+  /** Called after a manager adds, edits or deletes an item, or changes establishment details. */
+  function menuChanged(op) {
+    const c = cfg();
+    c.menuOps = [...(c.menuOps || []), op.item ? { ...op, item: itemForWire(op.item) } : op];
+    save(); run(false);
+  }
+
+  function adopt(menu, version) {
+    const c = cfg();
+    const changed = version !== c.menuVersion || JSON.stringify(menu.products) !== JSON.stringify(db.products);
+    db.products = menu.products;
+    ORG_KEYS.forEach(k => { if (k in menu.org) db.settings[k] = menu.org[k]; });
+    c.menuVersion = version;
+    save();
+    if (changed) dispatchEvent(new Event('menu-pulled'));
+  }
 
   async function syncMenu() {
     const c = cfg();
-    if (Auth.isManager() && c.menuDirty) {
+    delete c.menuDirty;                                    // replaced by menuOps
+    if (!Auth.isManager()) c.menuOps = [];                 // only managers change the menu
+    for (let tries = 0; tries < 3; tries++) {
+      const doc = await call('catalog:get', {});
+      const ops = c.menuOps || [];
+      if (!doc && !Auth.isManager()) return;
+      if (doc && !ops.length) { if (doc.version !== c.menuVersion) adopt(doc, doc.version); return; }
+      // First manager to find the cloud empty seeds it with this device's list; otherwise replay the edits.
+      const next = doc ? applyOps(doc, ops)
+        : { products: db.products.map(itemForWire), org: Object.fromEntries(ORG_KEYS.map(k => [k, String(db.settings[k] || '')])) };
       try {
-        const { version } = await call('catalog:save', { baseVersion: c.menuVersion || 0, ...menuForWire() }, 'mutation');
-        c.menuVersion = version; c.menuDirty = false; save();
+        const { version } = await call('catalog:save', { baseVersion: doc ? doc.version : 0, ...next }, 'mutation');
+        c.menuOps = (c.menuOps || []).slice(ops.length);   // edits made meanwhile wait for the next round
+        adopt(c.menuOps.length ? applyOps(next, c.menuOps) : next, version);
         return;
       } catch (e) {
-        if (!e.message.includes('CATALOG_CONFLICT')) throw e;
-        c.menuDirty = false;   // another manager saved first: take theirs below
-        toast(t('عدّل مدير آخر الأصناف في نفس الوقت — تم تحديث القائمة، أعد تعديلك.'), 'err');
+        if (!e.message.includes('CATALOG_CONFLICT')) throw e;   // someone saved in between: fetch and replay again
       }
     }
-    const doc = await call('catalog:get', {});
-    if (!doc) {
-      if (Auth.isManager()) { c.menuVersion = 0; c.menuDirty = true; return syncMenu(); }
-      return;
-    }
-    if (doc.version === c.menuVersion) return;
-    db.products = doc.products;
-    ORG_KEYS.forEach(k => { if (k in doc.org) db.settings[k] = doc.org[k]; });
-    c.menuVersion = doc.version;
-    save();
-    dispatchEvent(new Event('menu-pulled'));
   }
 
   async function doRun(manual) {
