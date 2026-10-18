@@ -126,6 +126,17 @@ function seed() {
 function normalize() {
   db.settings = { ...DEFAULT_SETTINGS, ...db.settings };
   if (!Array.isArray(db.products) || !db.products.length) db.products = seed().products;
+  // Menu items added later reach devices set up before them, once: deleting one afterwards sticks.
+  const offered = db.settings.offeredProducts || [];
+  for (const name of ADDED_PRODUCTS.filter(n => !offered.includes(n))) {
+    const i = DEFAULT_PRODUCTS.findIndex(p => p.ar === name);
+    if (!db.products.some(p => p.ar === name)) {
+      const before = db.products.findIndex(p => p.ar === (DEFAULT_PRODUCTS[i - 1] || {}).ar);   // keep it next to its sibling
+      db.products.splice(before < 0 ? db.products.length : before + 1, 0, { id: uid(), active: 1, ...DEFAULT_PRODUCTS[i] });
+    }
+    offered.push(name);
+  }
+  db.settings.offeredProducts = offered;
   if (!Array.isArray(db.invoices)) db.invoices = [];
 }
 
@@ -444,7 +455,7 @@ const _qrCache = new Map();
 function qrFor(inv, scale) {
   const key = inv.uid + '|' + scale;
   if (!_qrCache.has(key)) {
-    try { _qrCache.set(key, QR.toDataURL(qrPayload(inv), { scale, quiet: 2 })); }
+    try { _qrCache.set(key, QR.toDataURL(qrPayload(inv), { scale, quiet: 4 })); }
     catch (e) { _qrCache.set(key, ''); }
   }
   return _qrCache.get(key);

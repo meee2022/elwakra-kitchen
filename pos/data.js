@@ -33,21 +33,30 @@ const DEFAULT_SETTINGS = {
 
 /* الأصناف — cat: meals (وجبات) | banquet (ولائم) | extra (إضافات)
    price بالريال القطري · weight بالجرام · state: طازج/مجمد · origin: المنشأ */
+/* Added after devices were already set up: normalize() offers each to existing devices once. */
+const ADDED_PRODUCTS = ['وجبة سمك', 'صالونة ربيان', 'صالونة لحم', 'صالونة دجاج', 'وجبة دجاج', 'وجبة لحم أسترالي'];
+
 const DEFAULT_PRODUCTS = [
   // ---------- منيو الوجبات ----------
   { ar: 'مكبوس سمك',                 en: 'Magbus Samak',              cat: 'meals', price: 40, weight: 1200, state: 'طازج', origin: 'محلي' },
+  { ar: 'وجبة سمك',                  en: 'Samak Meal (No Rice)',      cat: 'meals', price: 30, weight: 0,    state: 'طازج', origin: 'محلي' },
   { ar: 'صالونة سمك مع رز',          en: 'Salona Samak + Rice',       cat: 'meals', price: 40, weight: 1200, state: 'طازج', origin: 'محلي' },
   { ar: 'صالونة ربيان + عيش أبيض',   en: 'Salona Robiyan + Aish Abiad', cat: 'meals', price: 50, weight: 1000, state: 'مجمد', origin: 'كندا' },
+  { ar: 'صالونة ربيان',              en: 'Salona Robiyan (No Rice)',  cat: 'meals', price: 40, weight: 0,    state: 'مجمد', origin: 'كندا' },
   { ar: 'برياني ربيان',              en: 'Robiyan Biryani',           cat: 'meals', price: 50, weight: 1000, state: 'مجمد', origin: 'كندا' },
   { ar: 'سمك مقلي + عيش أبيض',       en: 'Fried Samak + Aish Abiad',  cat: 'meals', price: 40, weight: 1000, state: 'طازج', origin: 'محلي' },
   { ar: 'سمك مشوي + عيش أبيض',       en: 'Aish Abiad Samak Mashwi',   cat: 'meals', price: 50, weight: 1000, state: 'طازج', origin: 'محلي' },
   { ar: 'جشيد + عيش أبيض',           en: 'Gesheed + Aish Abiad',      cat: 'meals', price: 40, weight: 900,  state: 'طازج', origin: 'محلي' },
   { ar: 'مشخول تونة',                en: 'Mashkhoul Tuna',            cat: 'meals', price: 40, weight: 900,  state: 'طازج', origin: 'محلي' },
   { ar: 'صالونة لحم + عيش أبيض',     en: 'Aish Abiad + Salona Laham', cat: 'meals', price: 55, weight: 1200, state: 'طازج', origin: 'استرالي' },
+  { ar: 'صالونة لحم',                en: 'Salona Laham (No Rice)',    cat: 'meals', price: 45, weight: 0,    state: 'طازج', origin: 'استرالي' },
   { ar: 'صالونة دجاج + عيش أبيض',    en: 'Aish Abiad + Salona Degag', cat: 'meals', price: 35, weight: 1200, state: 'مجمد', origin: 'برازيلي' },
+  { ar: 'صالونة دجاج',               en: 'Salona Degag (No Rice)',    cat: 'meals', price: 25, weight: 0,    state: 'مجمد', origin: 'برازيلي' },
   { ar: 'مكبوس دجاج',                en: 'Magbus Digag',              cat: 'meals', price: 30, weight: 1200, state: 'مجمد', origin: 'برازيلي' },
+  { ar: 'وجبة دجاج',                 en: 'Digag Meal (No Rice)',      cat: 'meals', price: 20, weight: 0,    state: 'مجمد', origin: 'برازيلي' },
   { ar: 'برياني دجاج',               en: 'Biryani Digag',             cat: 'meals', price: 30, weight: 1200, state: 'مجمد', origin: 'برازيلي' },
   { ar: 'مكبوس لحم',                 en: 'Magbus Laham',              cat: 'meals', price: 55, weight: 1200, state: 'طازج', origin: 'استرالي' },
+  { ar: 'وجبة لحم أسترالي',          en: 'Australian Laham Meal (No Rice)', cat: 'meals', price: 45, weight: 0, state: 'طازج', origin: 'استرالي' },
   { ar: 'برياني لحم',                en: 'Biryani Laham',             cat: 'meals', price: 55, weight: 1200, state: 'طازج', origin: 'استرالي' },
   { ar: 'برياني هندي لحم',           en: 'Biryani Hindi Laham',       cat: 'meals', price: 55, weight: 1000, state: 'طازج', origin: 'استرالي' },
   { ar: 'برياني هندي دجاج',          en: 'Biryani Hindi Digag',       cat: 'meals', price: 35, weight: 1000, state: 'مجمد', origin: 'برازيلي' },
