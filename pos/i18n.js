@@ -356,6 +356,9 @@ const I18N = {
   'عدّل الأصناف ثم احفظ — ستصدر فاتورة بديلة عن رقم {0}': 'Change the items, then save: a replacement for invoice {0} will be issued',
   'تعديل الفاتورة رقم {0} — احفظ لإصدار البديلة': 'Editing invoice {0}: save to issue the replacement',
 
+  /* Tablet printing */
+  'المتصفح منع فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة لهذا الموقع، أو اطبع من «الفواتير».': 'The browser blocked the print window. Allow pop-ups for this site, or print from Invoices.',
+
   /* Kitchen ticket */
   'ورقة المطبخ مع كل طلب': 'Kitchen ticket with every order',
   'ورقة المطبخ': 'Kitchen Ticket',

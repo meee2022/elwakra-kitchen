@@ -442,6 +442,13 @@ async function writeInvoice(print, type) {
   clearCart();
   toast(I18n.t2('تم حفظ الفاتورة رقم {0} — {1} ر.ق', inv.no, money(inv.total)), 'ok');
   // Kitchen first: that copy keeps the order moving.
+  if (ANDROID && print && db.settings.kitchenTicket) {
+    // The tablet has one printer and a second pop-up would be blocked: one tab, ticket then invoice.
+    const thermal = db.settings.printSize === 'thermal';
+    printDoc(kitchenHTML(inv) + '<div style="break-before:page"></div>' + invoiceHTML(inv), KITCHEN_CSS + INVOICE_CSS,
+      thermal ? 'roll' : 'size:A5;margin:7mm');
+    return;
+  }
   if (db.settings.kitchenTicket) await printKitchen(inv);
   if (print) printInvoice(inv);
 }
@@ -597,7 +604,35 @@ function invoiceHTML(inv, opts = {}) {
 /* ══════════════ الطباعة والتصدير ══════════════ */
 /** يطبع داخل إطار معزول يحتوي المستند وحده — أسرع بكثير من طباعة صفحة التطبيق
     كاملة، ويمنع تسرّب تنسيقات الواجهة إلى الورق. */
+/* Chrome on Android (the cashier tablet: HONOR Pad + BOXPOS through RawBT) previews a hidden iframe
+   but prints the whole POS page, ignores print() called on a tab opened from here, and ignores @page
+   sizes; all found on the same tablet and printer at Adrenaline West Bay, 2026-10-15. There the
+   document opens in its own tab that prints itself once loaded, with a Print button for a retry.
+   RawBT trims the blank paper ("Squeeze images") and cuts at the end of the job. */
+const ANDROID = /Android/i.test(navigator.userAgent);
+function printInTab(bodyHTML, css, pageRule) {
+  const w = window.open('', '_blank');
+  if (!w) {
+    toast(t('المتصفح منع فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة لهذا الموقع، أو اطبع من «الفواتير».'), 'err');
+    return Promise.resolve();
+  }
+  w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1"><title>STDK</title><style>
+    *{box-sizing:border-box} body{margin:0;background:#fff;
+      font-family:"Segoe UI",Tahoma,Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    ${pageRule === 'roll' ? '' : `@page{${pageRule}}`}
+    ${css}
+    @media print{.pd-print{display:none!important}}</style></head><body>${bodyHTML}
+    <button class="pd-print" onclick="print()" style="position:fixed;top:12px;left:12px;z-index:9;padding:12px 20px;border:0;
+      border-radius:12px;background:#943B25;color:#fff;font:700 16px sans-serif">طباعة · Print</button>
+    <script>addEventListener('load',function(){(document.fonts?document.fonts.ready:Promise.resolve())
+      .then(function(){setTimeout(function(){print()},300)})})<\/script></body></html>`);
+  w.document.close();
+  return Promise.resolve();   // no closing on afterprint: on Android print() returns at once and closing kills the job
+}
+
 function printDoc(bodyHTML, css, pageRule) {
+  if (ANDROID) return printInTab(bodyHTML, css, pageRule);
   return new Promise(done => {
   const f = document.createElement('iframe');
   f.setAttribute('aria-hidden', 'true');
