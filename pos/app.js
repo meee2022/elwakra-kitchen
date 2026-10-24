@@ -660,7 +660,74 @@ function printInTab(parts, css, pageRule) {
   return Promise.resolve();   // never close the tab from here: closing it kills a job still being sent
 }
 
+/* Tablet receipts skip the print dialog: each sheet is drawn to an image as wide as the printer head
+   and sent to RawBT as the printer's own commands, with a cut after every sheet. One tap prints the
+   kitchen ticket and both copies, each cut. Anything that fails falls back to the print dialog. */
+const RAW_DOTS = 576, RAW_CSS_W = 272;   // 72 mm head at 203 dpi; 72 mm in CSS pixels
+let rawFonts = null;
+function inlineFonts() {
+  // An SVG drawn as an image loads nothing from outside, so the font goes in as data.
+  const data = f => fetch('fonts/' + f).then(r => r.blob()).then(b => new Promise(ok => {
+    const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(b);
+  }));
+  return rawFonts || (rawFonts = Promise.all([data('cairo-latin-400.woff2'), data('cairo-arabic-400.woff2')])
+    .then(([la, ar]) => `@font-face{font-family:CairoLa;src:url(${la})}@font-face{font-family:CairoAr;src:url(${ar})}
+      *{font-family:CairoLa,CairoAr,sans-serif!important}`));
+}
+async function sheetCanvas(html, css, fonts) {
+  css = css.replace(/@import[^;]+;/g, '') + fonts;
+  // Lay the sheet out at the printed width to learn its height and get it as XHTML.
+  const f = document.createElement('iframe');
+  f.style.cssText = `position:fixed;left:-10000px;top:0;width:${RAW_CSS_W}px;height:10px;border:0`;
+  document.documentElement.appendChild(f);   // not body: hidden behind the lock screen, it would lay out nothing
+  const d = f.contentDocument;
+  d.open(); d.write(`<!DOCTYPE html><html dir="rtl"><head><style>body{margin:0;background:#fff}${css}</style></head><body>${html}</body></html>`); d.close();
+  await d.fonts.ready;
+  const h = Math.ceil(d.documentElement.scrollHeight);
+  const body = new XMLSerializer().serializeToString(d.body).replace(/^<body/, '<div').replace(/<\/body>$/, '</div>');
+  f.remove();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${RAW_CSS_W}" height="${h}"><foreignObject width="100%" height="100%">
+    <div xmlns="http://www.w3.org/1999/xhtml" dir="rtl" style="width:${RAW_CSS_W}px;background:#fff"><style>${css.replace(/</g, '&lt;')}</style>${body}</div></foreignObject></svg>`;
+  const img = new Image();
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  await img.decode();
+  const k = RAW_DOTS / RAW_CSS_W, c = document.createElement('canvas');
+  c.width = RAW_DOTS; c.height = Math.ceil(h * k);
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+  g.scale(k, k); g.drawImage(img, 0, 0);
+  return c;
+}
+// ESC/POS: raster image (GS v 0) in bands of 255 rows, then feed and cut (GS V 66).
+function rasterBytes(c) {
+  const px = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, wb = c.width / 8, out = [];
+  for (let y0 = 0; y0 < c.height; y0 += 255) {
+    const rows = Math.min(255, c.height - y0);
+    out.push(0x1D, 0x76, 0x30, 0, wb & 255, wb >> 8, rows, 0);
+    for (let y = y0; y < y0 + rows; y++)
+      for (let xb = 0; xb < wb; xb++) {
+        let byte = 0;
+        for (let bit = 0; bit < 8; bit++) {
+          const i = (y * c.width + xb * 8 + bit) * 4;
+          if (px[i] * .3 + px[i + 1] * .59 + px[i + 2] * .11 < 160) byte |= 0x80 >> bit;
+        }
+        out.push(byte);
+      }
+  }
+  out.push(0x1D, 0x56, 0x42, 0x10);
+  return out;
+}
+async function printRaw(parts, css) {
+  const fonts = await inlineFonts();
+  let bytes = [0x1B, 0x40];
+  for (const html of [].concat(parts)) bytes = bytes.concat(rasterBytes(await sheetCanvas(html, css, fonts)));
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.slice(i, i + 0x8000));
+  location.href = `intent:base64,${btoa(bin)}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
+}
+
 function printDoc(bodyHTML, css, pageRule) {
+  if (ANDROID && pageRule === 'roll') return printRaw(bodyHTML, css).catch(e => { console.error(e); return printInTab(bodyHTML, css, pageRule); });
   if (ANDROID) return printInTab(bodyHTML, css, pageRule);
   if (Array.isArray(bodyHTML)) bodyHTML = bodyHTML.map(b => `<section class="pg">${b}</section>`).join('');
   return new Promise(done => {
