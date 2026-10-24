@@ -50,6 +50,11 @@ const Sync = (function () {
       ...(v.voidedAt ? { voidedAt: String(v.voidedAt) } : {}),
       ...(v.replaces ? { replaces: Number(v.replaces) } : {}),
       ...(v.replacedBy ? { replacedBy: Number(v.replacedBy) } : {}),
+      // bookings (SPEC-bookings.md): the deposit invoice carries the event, the final one the deposit
+      ...(v.eventAt ? { eventAt: String(v.eventAt) } : {}),
+      ...(v.booking ? { booking: { items: v.booking.items.map(i => ({ ar: String(i.ar), en: String(i.en || ''), qty: Number(i.qty), price: Number(i.price) })),
+        total: Number(v.booking.total), ...(v.booking.closed ? { closed: true } : {}) } } : {}),
+      ...(v.deposit ? { deposit: Number(v.deposit), depositNo: Number(v.depositNo), depositUid: String(v.depositUid) } : {}),
       hash: String(v.hash || ''), org: v.org || {}
     };
   }

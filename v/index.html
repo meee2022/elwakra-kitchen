@@ -104,6 +104,7 @@ const PAY = { card: 'بطاقة · Card', cash: 'نقداً · Cash', credit: '�
       (r.discount > 0 ? row('الخصم', 'Discount', '−' + money(r.discount)) : '') +
       (r.delivery > 0 ? row('التوصيل', 'Delivery', money(r.delivery)) : '') +
       (r.vat > 0 ? row(`الضريبة ${esc(r.vatRate)}%`, 'VAT', money(r.vat)) : '') +
+      (r.deposit > 0 ? row('العربون المدفوع', 'Deposit paid', '−' + money(r.deposit)) : '') +
       row('الإجمالي', 'Total', money(r.total) + ' QAR', 'total');
     $('#fp').innerHTML = `<br>بصمة التحقق · Fingerprint <code>${esc(r.hash)}</code> — طابقها مع المطبوعة على الفاتورة`;
     $('#invoice').hidden = false;

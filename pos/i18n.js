@@ -361,6 +361,32 @@ const I18N = {
 
   'طريقة الطبخ': 'How to cook it',
 
+  /* Bookings with a deposit */
+  'حجز بعربون': 'Book with Deposit',
+  'العربون المدفوع': 'Deposit paid',
+  'الحجوزات القادمة': 'Upcoming Bookings',
+  'إجمالي الطلب': 'Order total',
+  'يوم العزومة': 'Event day',
+  'الساعة': 'Time',
+  'العربون المدفوع الآن (ر.ق)': 'Deposit paid now (QAR)',
+  'أنهِ التعديل أو التنفيذ الحالي أولاً': 'Finish the current edit or booking first.',
+  'اكتب اسم العميل ورقم الموبايل في الفاتورة': 'Enter the customer name and mobile on the invoice.',
+  'اختر يوم العزومة': 'Choose the event day.',
+  'العربون يجب أن يكون أكبر من صفر ولا يزيد عن الإجمالي': 'The deposit must be above zero and not more than the total.',
+  'تعذّر الاتصال — الحجوزات تحتاج الإنترنت.': 'Could not connect. Bookings need the internet.',
+  'لا توجد حجوزات قادمة': 'No upcoming bookings',
+  'سجّل حجزاً من السلة بزر «حجز بعربون».': 'Book from the cart with "Book with Deposit".',
+  'الباقي': 'Remaining',
+  'تنفيذ': 'Carry out',
+  'في السلة طلب مفتوح — استبداله بأصناف الحجز؟': 'There is an open order in the cart. Replace it with the booking items?',
+  'هذا الحجز لم يصل إلى هذا الجهاز بعد — حاول بعد قليل.': 'This booking has not reached this device yet. Try again shortly.',
+  'إلغاء حجز {0}؟': 'Cancel the booking for {0}?',
+  'هل أُرجع العربون للعميل؟\nموافق = نعم، تُلغى فاتورة العربون · إلغاء = لا، يبقى العربون دخلاً': 'Was the deposit refunded?\nOK = yes, the deposit invoice is cancelled · Cancel = no, the deposit stays as income',
+  'إلغاء حجز — رُدّ العربون': 'Booking cancelled: deposit refunded',
+  'تم إلغاء الحجز': 'Booking cancelled',
+  'تنفيذ حجز {0} — العربون {1} يُخصم عند الحفظ': 'Carrying out the booking for {0}: the deposit {1} is taken off on saving',
+  'فواتير الحجز لا تُعدَّل — ألغِ الحجز وسجّله من جديد.': 'Booking invoices cannot be edited. Cancel the booking and book again.',
+
   /* Shift close */
   'إغلاق الوردية': 'Close Shift',
   'طباعة وإغلاق الوردية': 'Print & Close Shift',

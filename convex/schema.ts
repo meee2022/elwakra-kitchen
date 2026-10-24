@@ -49,6 +49,14 @@ export default defineSchema({
     replaces: v.optional(v.number()),     // this invoice replaces an earlier one (edit after issue)
     replacedBy: v.optional(v.number()),   // this cancelled invoice was replaced by that one
 
+    // A booking: the deposit invoice carries the event and the planned order (see SPEC-bookings.md);
+    // the final invoice on the event day takes the deposit off its total.
+    eventAt: v.optional(v.string()),      // local date-time of the event, on the deposit invoice
+    booking: v.optional(v.object({ items: v.array(invoiceItem), total: v.number(), closed: v.optional(v.boolean()) })),
+    deposit: v.optional(v.number()),      // on the final invoice: amount already paid
+    depositNo: v.optional(v.number()),
+    depositUid: v.optional(v.string()),
+
     hash: v.string(),          // بصمة التحقق المطبوعة على الفاتورة
     org: v.any(),              // لقطة بيانات المنشأة وقت الإصدار
 
@@ -56,5 +64,7 @@ export default defineSchema({
   })
     .index("by_uid", ["uid"])
     .index("by_date", ["date"])
-    .index("by_syncedAt", ["syncedAt"]),   // lets a manager's device ask "what changed since I last looked"
+    .index("by_syncedAt", ["syncedAt"])
+    .index("by_eventAt", ["eventAt"])
+    .index("by_depositUid", ["depositUid"]),   // lets a manager's device ask "what changed since I last looked"
 });

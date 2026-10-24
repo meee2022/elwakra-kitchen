@@ -30,6 +30,11 @@ const invoiceFields = {
   voidedAt: v.optional(v.string()),
   replaces: v.optional(v.number()),     // this invoice replaces an earlier one (edit after issue)
   replacedBy: v.optional(v.number()),   // this cancelled invoice was replaced by that one
+  eventAt: v.optional(v.string()),      // bookings, see SPEC-bookings.md
+  booking: v.optional(v.object({ items: v.array(v.object({ ar: v.string(), en: v.string(), qty: v.number(), price: v.number() })), total: v.number(), closed: v.optional(v.boolean()) })),
+  deposit: v.optional(v.number()),
+  depositNo: v.optional(v.number()),
+  depositUid: v.optional(v.string()),
   hash: v.string(),
   org: v.any(),
 };
@@ -71,7 +76,8 @@ export const push = mutation({
       if (!inv.items.length || inv.items.some(i => !Number.isFinite(i.qty) || i.qty <= 0 || !Number.isFinite(i.price) || i.price < 0)) throw new Error("Invalid invoice items");
       const subtotal = inv.items.reduce((n,i)=>n+i.qty*i.price,0);
       const base = Math.max(0, subtotal-inv.discount)+inv.delivery;
-      if ([inv.subtotal,inv.total,inv.vat,inv.discount,inv.delivery,inv.vatRate].some(n=>!Number.isFinite(n)||n<0) || Math.abs(inv.subtotal-subtotal)>0.011 || Math.abs(inv.vat-base*inv.vatRate/100)>0.011 || Math.abs(inv.total-(base+inv.vat))>0.011) throw new Error("Invalid invoice totals");
+      const deposit = inv.deposit ?? 0;   // a booking's final invoice: paid in advance, taken off the total
+      if ([inv.subtotal,inv.total,inv.vat,inv.discount,inv.delivery,inv.vatRate,deposit].some(n=>!Number.isFinite(n)||n<0) || deposit>base+inv.vat+0.011 || Math.abs(inv.subtotal-subtotal)>0.011 || Math.abs(inv.vat-base*inv.vatRate/100)>0.011 || Math.abs(inv.total-(base+inv.vat-deposit))>0.011) throw new Error("Invalid invoice totals");
       if (existing) {
         await ctx.db.patch(existing._id, { ...inv, syncedAt: now });
       } else {
@@ -114,8 +120,27 @@ export const verify = query({
     // The items and amounts let the checker compare with the paper; who bought is never returned.
     return { found: true, no: r.no, date: r.date, time: r.time, type: r.type, status: r.status,
              items: r.items.map(i => ({ ar: i.ar, en: i.en, qty: i.qty, price: i.price })),
-             subtotal: r.subtotal, discount: r.discount, delivery: r.delivery, vatRate: r.vatRate, vat: r.vat, total: r.total,
+             subtotal: r.subtotal, discount: r.discount, delivery: r.delivery, vatRate: r.vatRate, vat: r.vat, total: r.total, deposit: r.deposit ?? 0,
              hash: r.hash, nameAr: String(r.org?.nameAr ?? ""), nameEn: String(r.org?.nameEn ?? ""), crNumber: String(r.org?.crNumber ?? "") };
+  },
+});
+
+/** Bookings still to come, for every signed-in account: deposit invoices with an event that are
+    active, not closed by a manager, and not yet followed by their final invoice. */
+export const bookings = query({
+  args: { token: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await requireSession(ctx, args.token);
+    const rows = await ctx.db.query("invoices").withIndex("by_eventAt", (q) => q.gt("eventAt", "")).collect();
+    const open = [];
+    for (const r of rows) {
+      if (r.status !== "active" || !r.booking || r.booking.closed) continue;
+      const done = await ctx.db.query("invoices").withIndex("by_depositUid", (q) => q.eq("depositUid", r.uid)).collect();
+      if (done.some((f) => f.status === "active")) continue;
+      const { _id, _creationTime, syncedAt, ...inv } = r;
+      open.push(inv);
+    }
+    return open;
   },
 });
 

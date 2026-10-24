@@ -224,7 +224,8 @@ $('#nav').addEventListener('click', e => {
 
 /* ══════════════ نقطة البيع ══════════════ */
 let cart = [];
-let editingFrom = null;   // { no, reason } while a saved invoice is being replaced
+let editingFrom = null;
+let bookingFrom = null;  // the deposit invoice of a booking being carried out (SPEC-bookings.md)   // { no, reason } while a saved invoice is being replaced
 let activeCat = 'meals';
 const DRAFT_KEY = 'stdk_locked_draft';
 addEventListener('auth-locked', event => {
@@ -387,7 +388,8 @@ function currentTotals() {
   const base = Math.max(0, subtotal - discount) + delivery;
   const vatRate = db.settings.vatEnabled ? (+db.settings.vatRate || 0) : 0;
   const vat = base * vatRate / 100;
-  return { subtotal, discount, delivery, vatRate, vat, total: base + vat };
+  const deposit = bookingFrom ? Math.min(bookingFrom.total, base + vat) : 0;   // paid when it was booked
+  return { subtotal, discount, delivery, vatRate, vat, total: base + vat - deposit, ...(deposit ? { deposit } : {}) };
 }
 function updateTotals() {
   const t = currentTotals();
@@ -397,8 +399,10 @@ function updateTotals() {
   // سطرا الخصم والتوصيل يظهران عند وجود قيمة فقط — أقل تشويشاً ومساحة أوفر
   $('#rowDisc').hidden = !(t.discount > 0);
   $('#rowDel').hidden = !(t.delivery > 0);
+  $('#tDep').textContent = '−' + money(t.deposit || 0);
+  $('#rowDep').hidden = !t.deposit;
   // With no discount, delivery or VAT the subtotal just repeats the total; reclaim the line.
-  const plain = !(t.discount > 0 || t.delivery > 0 || t.vat > 0);
+  const plain = !(t.discount > 0 || t.delivery > 0 || t.vat > 0 || t.deposit);
   $('#tSub').parentElement.hidden = plain;
   $('.totals').classList.toggle('plain', plain);
   $('#tGrand').textContent = money(t.total) + ' ' + I18n.t('ر.ق');
@@ -408,7 +412,7 @@ function updateTotals() {
 
 function clearCart() {
   cart = [];
-  editingFrom = null; renderEditBanner();
+  editingFrom = null; bookingFrom = null; renderEditBanner();
   ['#cName', '#cPhone', '#invNote'].forEach(s => $(s).value = '');
   $('#discount').value = $('#delivery').value = 0;
   $('#invDate').value = todayISO();
@@ -418,16 +422,17 @@ function clearCart() {
 $('#btnClear').addEventListener('click', () => { if (!cart.length || confirm(t('إفراغ الفاتورة الحالية؟'))) clearCart(); });
 
 let savingInvoice = false;   // blocks a second click from issuing a duplicate while the first is being written
-async function saveInvoice(print, type) {
+async function saveInvoice(print, type, booking) {
   if (!Auth.active()) return toast(I18n.t('سجّل الدخول أولًا'), 'err');
   if (!cart.length || savingInvoice) return;
   savingInvoice = true;
-  try { await writeInvoice(print, type); } finally { savingInvoice = false; }
+  try { await writeInvoice(print, type, booking); } finally { savingInvoice = false; }
 }
-async function writeInvoice(print, type) {
+async function writeInvoice(print, type, booking) {
   const replacing = editingFrom && db.invoices.find(v => v.no === editingFrom.no && v.status === 'active');
   const paidNow = type !== 'credit';   // card and cash settle on the spot
-  const t = currentTotals();
+  // A new booking issues only its deposit: one line for the amount, the planned order rides along.
+  const t = booking ? { subtotal: booking.deposit, discount: 0, delivery: 0, vatRate: 0, vat: 0, total: booking.deposit } : currentTotals();
   const s = db.settings;
   const now = new Date();
   const inv = {
@@ -440,8 +445,13 @@ async function writeInvoice(print, type) {
     type,
     paid: paidNow,
     paidAt: paidNow ? now.toISOString() : null,
-    items: cart.map(l => ({ ar: l.ar, en: l.en, qty: l.qty, price: l.price })),
+    items: booking
+      ? [{ ar: `عربون حجز — عزومة يوم ${fmtDate(booking.date)} ${booking.time}`, en: `Booking deposit — event ${booking.date} ${booking.time}`, qty: 1, price: booking.deposit }]
+      : cart.map(l => ({ ar: l.ar, en: l.en, qty: l.qty, price: l.price })),
     ...t,
+    ...(booking ? { eventAt: `${booking.date}T${booking.time}`,
+      booking: { items: cart.map(l => ({ ar: l.ar, en: l.en, qty: l.qty, price: l.price })), total: currentTotals().total } } : {}),
+    ...(t.deposit ? { depositNo: bookingFrom.no, depositUid: bookingFrom.uid } : {}),
     note: $('#invNote').value.trim(),
     status: 'active',
     ...(replacing ? { replaces: replacing.no } : {}),
@@ -463,7 +473,7 @@ async function writeInvoice(print, type) {
   // The replacement and the cancellation of what it replaces are written together.
   const before = replacing && { status: replacing.status, voidReason: replacing.voidReason, voidedAt: replacing.voidedAt, replacedBy: replacing.replacedBy };
   if (replacing) {
-    Object.assign(replacing, { status: 'void', voidReason: editingFrom.reason || t('تعديل'), voidedAt: now.toISOString(), replacedBy: inv.no });
+    Object.assign(replacing, { status: 'void', voidReason: editingFrom.reason || I18n.t('تعديل'), voidedAt: now.toISOString(), replacedBy: inv.no });
     Sync.mark(replacing);
   }
   if (!(await flush())) {
@@ -476,8 +486,9 @@ async function writeInvoice(print, type) {
   Sync.run(false);
   clearCart();
   toast(I18n.t2('تم حفظ الفاتورة رقم {0} — {1} ر.ق', inv.no, money(inv.total)), 'ok');
-  // Kitchen first: that copy keeps the order moving.
+  // Kitchen first: that copy keeps the order moving. A deposit goes to the kitchen on the event day, not now.
   const rule = db.settings.printSize === 'thermal' ? 'roll' : 'size:A5;margin:7mm';
+  if (inv.booking) { if (print) printDoc(twoCopies(inv), INVOICE_CSS, rule); return; }
   if (ANDROID && print && db.settings.kitchenTicket) {
     // The tablet has one printer and a second pop-up would be blocked: one tab, ticket then invoice.
     printDoc([kitchenHTML(inv), ...twoCopies(inv)], KITCHEN_CSS + INVOICE_CSS, rule);
@@ -560,7 +571,8 @@ function invoiceHTML(inv, opts = {}) {
   const extras = [
     inv.discount > 0 ? sumRow('الخصم (Discount)', -inv.discount) : '',
     inv.delivery > 0 ? sumRow('التوصيل (Delivery)', inv.delivery) : '',
-    inv.vat > 0 ? sumRow(`ضريبة القيمة المضافة ${inv.vatRate}% (VAT)`, inv.vat) : ''
+    inv.vat > 0 ? sumRow(`ضريبة القيمة المضافة ${inv.vatRate}% (VAT)`, inv.vat) : '',
+    inv.deposit ? sumRow(`العربون المدفوع — فاتورة رقم ${inv.depositNo} (Deposit paid)`, -inv.deposit) : ''
   ].join('');
 
   const qty = inv.items.reduce((n, it) => n + it.qty, 0);
@@ -589,6 +601,7 @@ function invoiceHTML(inv, opts = {}) {
     </div>
 
     ${inv.replaces ? `<div class="inv-link">بديلة عن فاتورة رقم <b>${inv.replaces}</b> · Replaces invoice ${inv.replaces}</div>` : ''}
+    ${inv.booking ? bookingNote(inv) : ''}
     ${inv.replacedBy ? `<div class="inv-link">ملغاة — استُبدلت بفاتورة رقم <b>${inv.replacedBy}</b> · Replaced by invoice ${inv.replacedBy}</div>` : ''}
     <div class="inv-cust">
       <span><b>العميل / الجهة · BILL TO</b> ${esc(inv.customer) || (inv.type === 'card' ? 'عميل' : inv.type === 'cash' ? 'عميل نقدي' : 'غير محدد')}</span>
@@ -1069,6 +1082,7 @@ $('#invBody').addEventListener('click', e => {
    it into the cart; saving issues a replacement and cancels the original, linked both ways.
    Leaving the edit without saving keeps the original untouched. */
 function startEdit(inv) {
+  if (inv.booking || inv.deposit) return toast(t('فواتير الحجز لا تُعدَّل — ألغِ الحجز وسجّله من جديد.'), 'err');
   if (cart.length && !confirm(t('في السلة طلب مفتوح — استبداله بأصناف الفاتورة المراد تعديلها؟'))) return;
   const reason = prompt(I18n.t2('سبب تعديل الفاتورة رقم {0}؟\n(عند الحفظ تصدر فاتورة بديلة وتُلغى هذه تلقائياً)', inv.no));
   if (reason === null) return;
@@ -1082,8 +1096,9 @@ function startEdit(inv) {
   toast(I18n.t2('عدّل الأصناف ثم احفظ — ستصدر فاتورة بديلة عن رقم {0}', inv.no));
 }
 function renderEditBanner() {
-  $('#editBanner').hidden = !editingFrom;
+  $('#editBanner').hidden = !editingFrom && !bookingFrom;
   if (editingFrom) $('#editBannerText').textContent = I18n.t2('تعديل الفاتورة رقم {0} — احفظ لإصدار البديلة', editingFrom.no);
+  if (bookingFrom) $('#editBannerText').textContent = I18n.t2('تنفيذ حجز {0} — العربون {1} يُخصم عند الحفظ', bookingFrom.customer, money(bookingFrom.total));
 }
 $('#btnEditCancel').addEventListener('click', () => clearCart());
 
@@ -1116,6 +1131,80 @@ function kitchenHTML(inv) {
   </div>`;
 }
 function printKitchen(inv) { return printDoc(kitchenHTML(inv), KITCHEN_CSS, 'roll'); }
+
+/* ---------- الحجز بعربون (SPEC-bookings.md) ---------- */
+/* The deposit is an invoice of its own, so it counts in today's shift and reports. The final invoice on
+   the event day carries the whole order with the deposit taken off. */
+function bookingNote(inv) {
+  const [d, tm] = inv.eventAt.split('T'), rest = inv.booking.total - inv.total;
+  return `<div class="inv-link" style="text-align:start">
+    <div>حجز عزومة يوم <b>${ltr(fmtDate(d))} ${ltr(tm)}</b> · Event ${ltr(d + ' ' + tm)}</div>
+    <div>${inv.booking.items.map(it => `${ltr(it.qty + ' ×')} ${esc(it.ar)}`).join(' · ')}</div>
+    <div>إجمالي الطلب ${ltr(money(inv.booking.total))} · المدفوع ${ltr(money(inv.total))} · <b>الباقي يوم العزومة ${ltr(money(rest))}</b></div>
+  </div>`;
+}
+$('#btnBook').addEventListener('click', () => {
+  if (!cart.length || savingInvoice) return;
+  if (editingFrom || bookingFrom) return toast(t('أنهِ التعديل أو التنفيذ الحالي أولاً'), 'err');
+  $('#bkTotal').textContent = $('#tGrand').textContent;
+  $('#bkDate').min = todayISO();
+  $('#bkError').textContent = '';
+  $('#bookModal').classList.add('open');
+});
+$('#bookModal').addEventListener('click', e => {
+  const btn = e.target.closest('[data-book]');
+  if (!btn) return;
+  const booking = { date: $('#bkDate').value, time: $('#bkTime').value || '13:00', deposit: Math.round(+$('#bkDeposit').value || 0) };
+  const err = !$('#cName').value.trim() || !$('#cPhone').value.trim() ? t('اكتب اسم العميل ورقم الموبايل في الفاتورة')
+    : !booking.date || booking.date < todayISO() ? t('اختر يوم العزومة')
+    : booking.deposit <= 0 || booking.deposit > currentTotals().total ? t('العربون يجب أن يكون أكبر من صفر ولا يزيد عن الإجمالي') : '';
+  if (err) { $('#bkError').textContent = err; return; }
+  closeModals();
+  saveInvoice(true, btn.dataset.book, booking);
+});
+
+let openBookings = [];
+async function showBookings() {
+  $('#bookingsBody').innerHTML = `<p style="color:var(--muted)">${t('جاري التحميل…')}</p>`;
+  $('#bookingsModal').classList.add('open');
+  try { openBookings = (await Sync.call('invoices:bookings', {})).sort((a, b) => a.eventAt < b.eventAt ? -1 : 1); }
+  catch (e) { $('#bookingsBody').innerHTML = `<p class="lock-error">${t('تعذّر الاتصال — الحجوزات تحتاج الإنترنت.')}</p>`; return; }
+  $('#bookingsBody').innerHTML = !openBookings.length
+    ? `<div class="empty"><strong>${t('لا توجد حجوزات قادمة')}</strong><span>${t('سجّل حجزاً من السلة بزر «حجز بعربون».')}</span></div>`
+    : `<div class="tbl-scroll"><table><thead><tr><th>${t('يوم العزومة')}</th><th>${t('العميل / الجهة')}</th><th>${t('الإجمالي')}</th><th>${t('العربون المدفوع')}</th><th>${t('الباقي')}</th><th></th></tr></thead><tbody>
+      ${openBookings.map((b, i) => `<tr><td>${ltr(fmtDate(b.eventAt.slice(0, 10)) + ' ' + b.eventAt.slice(11))}</td>
+        <td>${esc(b.customer)}<br><small>${ltr(b.phone)}</small></td><td>${money(b.booking.total)}</td><td>${money(b.total)}</td>
+        <td><b>${money(b.booking.total - b.total)}</b></td>
+        <td><button class="btn btn-sm btn-primary" data-bk="${i}" data-a="run">${t('تنفيذ')}</button>
+          ${Auth.isManager() ? `<button class="btn btn-sm btn-danger" data-bk="${i}" data-a="cancel">${t('إلغاء')}</button>` : ''}</td></tr>`).join('')}
+      </tbody></table></div>`;
+}
+$('#btnBookings').addEventListener('click', showBookings);
+$('#bookingsBody').addEventListener('click', e => {
+  const btn = e.target.closest('[data-bk]');
+  if (!btn) return;
+  const b = openBookings[+btn.dataset.bk];
+  if (btn.dataset.a === 'run') {
+    // Event day: the planned order goes to the cart (it can still change); saving takes the deposit off.
+    if (cart.length && !confirm(t('في السلة طلب مفتوح — استبداله بأصناف الحجز؟'))) return;
+    clearCart();
+    cart = b.booking.items.map((it, i) => ({ id: (db.products.find(p => p.ar === it.ar) || {}).id || 'bk-' + i, ...it }));
+    $('#cName').value = b.customer; $('#cPhone').value = b.phone;
+    bookingFrom = b;
+    closeModals(); renderCart(); renderEditBanner();
+    document.querySelector('#nav [data-page="pos"]').click();
+  } else if (Auth.isManager()) {
+    const dep = db.invoices.find(v => v.uid === b.uid);
+    if (!dep) return toast(t('هذا الحجز لم يصل إلى هذا الجهاز بعد — حاول بعد قليل.'), 'err');
+    if (!confirm(I18n.t2('إلغاء حجز {0}؟', b.customer))) return;
+    if (confirm(t('هل أُرجع العربون للعميل؟\nموافق = نعم، تُلغى فاتورة العربون · إلغاء = لا، يبقى العربون دخلاً'))) {
+      Object.assign(dep, { status: 'void', voidReason: t('إلغاء حجز — رُدّ العربون'), voidedAt: new Date().toISOString() });
+    } else dep.booking = { ...dep.booking, closed: true };
+    Sync.mark(dep); save(); Sync.run(false);
+    toast(t('تم إلغاء الحجز'), 'ok');
+    closeModals(); rerenderAll();
+  }
+});
 
 /* ---------- إغلاق الوردية ---------- */
 /* One cashier, one shift: what was sold on this device since the last close, and the cash that should
