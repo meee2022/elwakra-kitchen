@@ -199,7 +199,7 @@ $('#nav button.active').setAttribute('aria-current', 'page');
 $('#nav').addEventListener('click', e => {
   const b = e.target.closest('button[data-page]');
   if (!b) return;
-  if (!Auth.isManager() && b.dataset.page !== 'pos') return;
+  if (!Auth.isManager() && !['pos', 'invoices'].includes(b.dataset.page)) return;   // cashiers: sell, look up, reprint
   $$('#nav button').forEach(x => x.classList.toggle('active', x === b));
   $$('#nav button').forEach(x => x === b ? x.setAttribute('aria-current', 'page') : x.removeAttribute('aria-current'));
   if (b.dataset.page === 'settings' && !gotoSettingsAllowed) {
@@ -886,9 +886,9 @@ function renderInvoices() {
       <td class="acts">
         <button class="btn btn-sm" data-v="${v.no}" data-a="view">${t('عرض')}</button>
         <button class="btn btn-sm" data-v="${v.no}" data-a="print">${t('طباعة')}</button>
-        ${v.status === 'active' && v.type === 'credit' && !v.paid ? `<button class="btn btn-sm" data-v="${v.no}" data-a="pay">${t('تحصيل')}</button>` : ''}
-        ${v.status === 'active' ? `<button class="btn btn-sm" data-v="${v.no}" data-a="edit">${t('تعديل')}</button>` : ''}
-        ${v.status === 'active' ? `<button class="btn btn-sm btn-danger" data-v="${v.no}" data-a="void">${t('إلغاء')}</button>` : ''}
+        ${!Auth.isManager() ? '' : v.status === 'active' && v.type === 'credit' && !v.paid ? `<button class="btn btn-sm" data-v="${v.no}" data-a="pay">${t('تحصيل')}</button>` : ''}
+        ${Auth.isManager() && v.status === 'active' ? `<button class="btn btn-sm" data-v="${v.no}" data-a="edit">${t('تعديل')}</button>` : ''}
+        ${Auth.isManager() && v.status === 'active' ? `<button class="btn btn-sm btn-danger" data-v="${v.no}" data-a="void">${t('إلغاء')}</button>` : ''}
       </td>
     </tr>`).join('')
     : `<tr><td colspan="8"><div class="empty">${t('لا توجد فواتير مطابقة')}</div></td></tr>`;
@@ -924,6 +924,7 @@ $('#invBody').addEventListener('click', e => {
   const inv = db.invoices.find(v => v.no === +b.dataset.v);
   if (!inv) return;
   const a = b.dataset.a;
+  if (!Auth.isManager() && !['view', 'print'].includes(a)) return;
   if (a === 'view') openInvoice(inv);
   else if (a === 'print') printInvoice(inv);
   else if (a === 'pay') {
@@ -1613,7 +1614,8 @@ function rerenderAll() {
   }
   renderCatTabs(); renderProdGrid(); renderCart();
   $('#nextNoLabel').textContent = t('رقم الفاتورة القادم: ') + db.settings.nextInvoiceNo;
-  if(Auth.isManager()){renderInvoices(); renderProducts(); renderReports(); fillSettings(); renderAccounts(); paintAcct();}
+  renderInvoices();
+  if(Auth.isManager()){renderProducts(); renderReports(); fillSettings(); renderAccounts(); paintAcct();}
   Sync.render();
   I18n.applyStatic();   // أي نص موسوم داخل قوالب مرسومة حديثاً
   applyBranding(); tick();

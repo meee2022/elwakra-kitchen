@@ -112,5 +112,7 @@ html.auth-pending body>:not(#authGate){display:none!important}
 
 /* ── Signed-in chrome and role visibility ── */
 .auth-user{font-size:11px;color:var(--muted);margin-inline-start:8px}
-html[data-role=cashier] #nav button:not([data-page=pos]),html[data-role=cashier] .dashboard-link{display:none!important}
+/* Cashiers sell and can look up / reprint what was sold; no figures, exports or changes. */
+html[data-role=cashier] #nav button:not([data-page=pos]):not([data-page=invoices]),html[data-role=cashier] .dashboard-link,
+html[data-role=cashier] #invStats,html[data-role=cashier] #btnPrintRegister,html[data-role=cashier] #btnExportCsv{display:none!important}
 html[data-role=cashier] #nav{display:flex}
