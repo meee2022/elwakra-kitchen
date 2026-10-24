@@ -34,7 +34,7 @@ const DEFAULT_SETTINGS = {
 /* الأصناف — cat: meals (وجبات) | banquet (ولائم) | extra (إضافات)
    price بالريال القطري · weight بالجرام · state: طازج/مجمد · origin: المنشأ */
 /* Added after devices were already set up: normalize() offers each to existing devices once. */
-const ADDED_PRODUCTS = ['وجبة سمك', 'صالونة ربيان', 'صالونة لحم', 'صالونة دجاج', 'وجبة دجاج', 'وجبة لحم أسترالي', 'خروف صغير', 'خروف وسط', 'نص خروف (برياني أو خصوصي)', 'نص خروف (مكبوس أو عيش أبيض)', 'دجاجة من المطبخ (مكبوس / برياني / خصوصي / عيش أبيض)', 'دجاجة من الزبون (مكبوس / برياني / عيش أبيض)', 'دجاجة من الزبون (برياني هندي / خصوصي الجنوب)'];
+const ADDED_PRODUCTS = ['وجبة سمك', 'صالونة ربيان', 'صالونة لحم', 'صالونة دجاج', 'وجبة دجاج', 'وجبة لحم أسترالي', 'خروف صغير', 'خروف وسط', 'نص خروف (برياني أو خصوصي)', 'نص خروف (مكبوس أو عيش أبيض)', 'كرتون دجاج خصوصي الجنوب (الدجاج من المطبخ)', 'دجاجة من المطبخ (مكبوس / برياني / خصوصي / عيش أبيض)', 'دجاجة من الزبون (مكبوس / برياني / عيش أبيض)', 'دجاجة من الزبون (برياني هندي / خصوصي الجنوب)'];
 
 const DEFAULT_PRODUCTS = [
   // ---------- منيو الوجبات ----------
@@ -101,6 +101,7 @@ const DEFAULT_PRODUCTS = [
   { ar: 'كرتون دجاج برياني (الدجاج من الزبون)', en: 'Chicken Biryani Carton (customer)', cat: 'banquet', price: 350, weight: 0, state: 'مجمد', origin: '' },
   { ar: 'كرتون دجاج مكبوس (الدجاج من المطبخ)',  en: 'Chicken Magbus Carton (kitchen)',  cat: 'banquet', price: 500, weight: 0, state: '', origin: '' },
   { ar: 'كرتون دجاج مكبوس (الدجاج من الزبون)',  en: 'Chicken Magbus Carton (customer)', cat: 'banquet', price: 350, weight: 0, state: 'مجمد', origin: '' },
+  { id: 'carton-special', ar: 'كرتون دجاج خصوصي الجنوب (الدجاج من المطبخ)', en: 'Chicken Special Junoub Carton (kitchen)', cat: 'banquet', price: 500, weight: 0, state: '', origin: '' },
   { id: 'whole-chicken', ar: 'دجاجة من المطبخ (مكبوس / برياني / خصوصي / عيش أبيض)', en: 'Chicken, ours (Magbus / Biryani / Special / Aish Abiad)', cat: 'banquet', price: 50, weight: 0, state: '', origin: '' },
   { id: 'own-chicken-35', ar: 'دجاجة من الزبون (مكبوس / برياني / عيش أبيض)', en: "Customer's chicken (Magbus / Biryani / Aish Abiad)", cat: 'banquet', price: 35, weight: 0, state: '', origin: '' },
   { id: 'own-chicken-40', ar: 'دجاجة من الزبون (برياني هندي / خصوصي الجنوب)', en: "Customer's chicken (Biryani Hindi / Special Junoub)", cat: 'banquet', price: 40, weight: 0, state: '', origin: '' },
