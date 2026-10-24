@@ -359,6 +359,14 @@ const I18N = {
   /* Tablet printing */
   'المتصفح منع فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة لهذا الموقع، أو اطبع من «الفواتير».': 'The browser blocked the print window. Allow pop-ups for this site, or print from Invoices.',
 
+  /* Shift close */
+  'إغلاق الوردية': 'Close Shift',
+  'طباعة وإغلاق الوردية': 'Print & Close Shift',
+  'عدد الفواتير': 'Invoices',
+  'نقداً — المفروض في الدرج': 'Cash: should be in the drawer',
+  'حتى الآن': 'until now',
+  'تم إغلاق الوردية — تبدأ وردية جديدة الآن': 'Shift closed. A new shift starts now.',
+
   /* Kitchen ticket */
   'ورقة المطبخ مع كل طلب': 'Kitchen ticket with every order',
   'ورقة المطبخ': 'Kitchen Ticket',

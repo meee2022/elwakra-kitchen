@@ -9,8 +9,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="app.css?v=53">
-<link rel="stylesheet" href="auth.css?v=53">
+<link rel="stylesheet" href="app.css?v=54">
+<link rel="stylesheet" href="auth.css?v=54">
 </head>
 <body>
 
@@ -138,6 +138,7 @@
         <input type="date" id="invFrom" style="width:150px" title="من تاريخ" data-i18n-title="من تاريخ" data-i18n-title="من تاريخ">
         <input type="date" id="invTo" style="width:150px" title="إلى تاريخ" data-i18n-title="إلى تاريخ" data-i18n-title="إلى تاريخ">
         <button class="btn" id="btnInvReset" data-i18n="إلغاء الفلترة">إلغاء الفلترة</button>
+        <button class="btn btn-primary" id="btnShift" data-i18n="إغلاق الوردية">إغلاق الوردية</button>
       </div>
     </div>
     <div class="tbl-scroll" style="max-height:62vh">
@@ -439,6 +440,18 @@
   </div>
 </div>
 
+<!-- إغلاق الوردية -->
+<div class="modal" id="shiftModal">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-h"><h3 data-i18n="إغلاق الوردية">إغلاق الوردية</h3><button class="x" data-close>&times;</button></div>
+    <div class="modal-b" id="shiftBody"></div>
+    <div class="modal-f">
+      <button class="btn btn-primary" id="btnShiftClose" data-i18n="طباعة وإغلاق الوردية">طباعة وإغلاق الوردية</button>
+      <button class="btn" data-close data-i18n="إلغاء">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <!-- نافذة اختيار طريقة الدفع -->
 <div class="modal" id="payModal">
   <div class="modal-box" style="max-width:440px">
@@ -472,12 +485,12 @@
 
 <div id="toast" role="status" aria-live="polite"></div>
 
-<script src="auth.js?v=53"></script>
-<script src="i18n.js?v=53"></script>
-<script src="lock.js?v=53"></script>
-<script src="data.js?v=53"></script>
-<script src="qr.js?v=53"></script>
-<script src="sync.js?v=53"></script>
-<script src="app.js?v=53"></script>
+<script src="auth.js?v=54"></script>
+<script src="i18n.js?v=54"></script>
+<script src="lock.js?v=54"></script>
+<script src="data.js?v=54"></script>
+<script src="qr.js?v=54"></script>
+<script src="sync.js?v=54"></script>
+<script src="app.js?v=54"></script>
 </body>
 </html>

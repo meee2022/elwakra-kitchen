@@ -1100,6 +1100,47 @@ function kitchenHTML(inv) {
 }
 function printKitchen(inv) { return printDoc(kitchenHTML(inv), KITCHEN_CSS, 'roll'); }
 
+/* ---------- إغلاق الوردية ---------- */
+/* One cashier, one shift: what was sold on this device since the last close, and the cash that should
+   be in the drawer. Closing prints the slip and starts the count again. */
+function shiftSummary() {
+  const from = db.settings.shiftStart || '', me = Auth.profile()?.username;
+  const list = db.invoices.filter(v => (v.createdAt || '') > from && (Auth.isManager() || v._createdBy === me));
+  const active = list.filter(v => v.status === 'active');
+  const sum = type => active.filter(v => v.type === type).reduce((n, v) => n + v.total, 0);
+  return { from, to: new Date().toISOString(), count: active.length, voids: list.length - active.length,
+    cash: sum('cash'), card: sum('card'), credit: sum('credit'), total: active.reduce((n, v) => n + v.total, 0) };
+}
+const SHIFT_ROWS = [['count', 'عدد الفواتير', 'Invoices'], ['cash', 'نقداً — المفروض في الدرج', 'Cash in drawer'],
+  ['card', 'بطاقة', 'Card'], ['credit', 'على الحساب', 'Credit'], ['total', 'الإجمالي', 'Total'], ['voids', 'ملغاة', 'Cancelled']];
+const shiftValue = (s, k) => k === 'count' || k === 'voids' ? String(s[k]) : money(s[k]);
+const shiftTime = iso => iso ? `${fmtDate(iso.slice(0, 10))} ${new Date(iso).toTimeString().slice(0, 5)}` : '—';
+function shiftHTML(s) {
+  return `<div class="kt">
+    <div class="kt-h"><span>إغلاق وردية · SHIFT CLOSE</span></div>
+    <div class="kt-meta">${esc(Auth.profile()?.username || '')}<br>من · From: ${ltr(shiftTime(s.from))}<br>إلى · To: ${ltr(shiftTime(s.to))}</div>
+    <table class="kt-items">${SHIFT_ROWS.map(([k, ar, en]) => `<tr${k === 'cash' ? ' class="sh-cash"' : ''}>
+      <td class="kt-n">${ar}<small dir="ltr">${en}</small></td><td class="sh-v">${ltr(shiftValue(s, k))}</td></tr>`).join('')}</table>
+    <div class="kt-f">${esc(db.settings.nameAr || '')}</div>
+  </div>`;
+}
+const SHIFT_CSS = KITCHEN_CSS + `.sh-v{font-size:14pt;font-weight:800;text-align:left;white-space:nowrap}
+.sh-cash td{border:2px solid #000;padding:2mm}`;
+$('#btnShift').addEventListener('click', () => {
+  const s = shiftSummary();
+  $('#shiftBody').innerHTML = `<p style="margin:0 0 10px;color:var(--muted)">${t('من')} ${ltr(shiftTime(s.from))} ${t('حتى الآن')}</p>
+    <table style="width:100%;border-collapse:collapse">${SHIFT_ROWS.map(([k, ar]) => `<tr style="border-bottom:1px solid var(--line)${k === 'cash' ? ';font-weight:800;font-size:1.15em' : ''}">
+      <td style="padding:9px 0">${t(ar)}</td><td style="text-align:end">${ltr(shiftValue(s, k))}</td></tr>`).join('')}</table>`;
+  $('#shiftModal').classList.add('open');
+});
+$('#btnShiftClose').addEventListener('click', () => {
+  const s = shiftSummary();
+  printDoc(shiftHTML(s), SHIFT_CSS, 'roll');
+  db.settings.shiftStart = s.to;
+  save(); closeModals();
+  toast(t('تم إغلاق الوردية — تبدأ وردية جديدة الآن'), 'ok');
+});
+
 let viewing = null;
 function openInvoice(inv) {
   viewing = inv;
