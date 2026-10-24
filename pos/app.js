@@ -261,12 +261,26 @@ $('#catTabs').addEventListener('click', e => {
 });
 $('#prodSearch').addEventListener('input', renderProdGrid);
 
+/* Items ordered most in the last 30 days come first. Counted once a day, so buttons do not move
+   under the cashier's finger after every sale. */
+let popular = { day: '', count: {} };
+function popularity() {
+  const day = new Date().toDateString();
+  if (popular.day !== day) {
+    const since = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10), count = {};
+    db.invoices.forEach(v => { if (v.status === 'active' && v.date >= since) v.items.forEach(it => { count[it.ar] = (count[it.ar] || 0) + it.qty; }); });
+    popular = { day, count };
+  }
+  return popular.count;
+}
+
 function renderProdGrid() {
   const q = $('#prodSearch').value.trim().toLowerCase();
+  const count = popularity();
   const list = db.products.filter(p =>
     p.active &&
     (q ? (p.ar.toLowerCase().includes(q) || (p.en || '').toLowerCase().includes(q)) : p.cat === activeCat)
-  );
+  ).sort((x, y) => (count[y.ar] || 0) - (count[x.ar] || 0));   // stable: ties keep the menu order
   $('#productCount').textContent = `${list.length} ${t('صنف')}`;
   $('#prodGrid').innerHTML = list.length ? list.map(p => `
     <button class="prod" data-id="${p.id}" aria-label="${esc(I18n.itemName(p))} ${money(p.price)}">
@@ -442,16 +456,19 @@ async function writeInvoice(print, type) {
   clearCart();
   toast(I18n.t2('تم حفظ الفاتورة رقم {0} — {1} ر.ق', inv.no, money(inv.total)), 'ok');
   // Kitchen first: that copy keeps the order moving.
+  const rule = db.settings.printSize === 'thermal' ? 'roll' : 'size:A5;margin:7mm';
   if (ANDROID && print && db.settings.kitchenTicket) {
     // The tablet has one printer and a second pop-up would be blocked: one tab, ticket then invoice.
-    const thermal = db.settings.printSize === 'thermal';
-    printDoc(kitchenHTML(inv) + '<div style="break-before:page"></div>' + invoiceHTML(inv), KITCHEN_CSS + INVOICE_CSS,
-      thermal ? 'roll' : 'size:A5;margin:7mm');
+    printDoc(`<section class="pg">${kitchenHTML(inv)}</section>` + twoCopies(inv), KITCHEN_CSS + INVOICE_CSS, rule);
     return;
   }
   if (db.settings.kitchenTicket) await printKitchen(inv);
-  if (print) printInvoice(inv);
+  if (print) printDoc(twoCopies(inv), INVOICE_CSS, rule);
 }
+
+// A sale prints the invoice twice: one for the customer, one kept by the restaurant.
+const twoCopies = inv => [['نسخة العميل', 'Customer copy'], ['نسخة المحل', 'Shop copy']]
+  .map(([ar, en]) => `<section class="pg"><div class="inv-copy">${ar} · ${en}</div>${invoiceHTML(inv)}</section>`).join('');
 
 /* The payment method is asked for on every sale, so the cash and card totals can be trusted. */
 let payPrint = false;
@@ -654,7 +671,10 @@ function printDoc(bodyHTML, css, pageRule) {
     // A receipt roll has no page height: size the page to the content, so the printer neither
     // shrinks it onto a sheet nor feeds blank paper above and below.
     if (pageRule === 'roll') {
-      const mm = Math.ceil(d.documentElement.scrollHeight * 25.4 / 96) + 4;
+      // Several copies (.pg) each get a page of the tallest one's height, so each is cut on its own.
+      const pages = [...d.querySelectorAll('.pg')];
+      const px = pages.length ? Math.max(...pages.map(p => p.scrollHeight)) : d.documentElement.scrollHeight;
+      const mm = Math.ceil(px * 25.4 / 96) + 4;
       d.head.insertAdjacentHTML('beforeend', `<style>@page{size:72mm ${mm}mm;margin:0}</style>`);
     }
     f.contentWindow.addEventListener('afterprint', cleanup, { once: true });
@@ -684,6 +704,9 @@ function printInvoice(inv, size = db.settings.printSize) {
 const PRINT_FONT = `@import url('fonts/cairo.css?v=25');`;
 
 const INVOICE_CSS = PRINT_FONT + `
+.pg+.pg{break-before:page}
+.inv-copy{max-width:68mm;margin:0 auto 2mm;padding:1mm;border:1px dashed #000;text-align:center;
+  font-family:'Cairo',"Segoe UI",Tahoma,sans-serif;font-size:8pt;font-weight:700;color:#000}
 .inv-wrap{position:relative;max-width:100%}
 .inv,.inv *{box-sizing:border-box}
 .inv{width:100%;max-width:148mm;padding:7mm;background:#fff;color:#25201d;margin:0 auto;

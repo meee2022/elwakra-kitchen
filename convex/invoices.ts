@@ -34,6 +34,10 @@ const invoiceFields = {
   org: v.any(),
 };
 
+// The database returns object keys in its own order, so compare by value rather than by key order.
+const canon = (x: unknown): string => JSON.stringify(x, (_k, val) =>
+  val && typeof val === "object" && !Array.isArray(val) ? Object.fromEntries(Object.entries(val).sort(([a], [b]) => a < b ? -1 : 1)) : val);
+
 /** يرفع دفعة فواتير: يُنشئ الجديد ويحدّث الموجود بمطابقة المعرّف الفريد. */
 export const push = mutation({
   args: {
@@ -54,7 +58,7 @@ export const push = mutation({
 
       if (user.role === "cashier") {
         if (existing) {
-          const same = Object.keys(invoiceFields).every(k => JSON.stringify((existing as any)[k]) === JSON.stringify((inv as any)[k]));
+          const same = Object.keys(invoiceFields).every(k => canon((existing as any)[k]) === canon((inv as any)[k]));
           if (!same) throw new Error("FORBIDDEN: cashier cannot modify existing invoices");
           saved.push(inv.uid); continue;
         }

@@ -48,6 +48,10 @@ describe("account access controls",()=>{
     await t.mutation(api.invoices.push,args);await t.mutation(api.invoices.push,args);
     await expect(t.mutation(api.invoices.push,{...args,invoices:[{...invoice,status:"void"}]})).rejects.toThrow("FORBIDDEN");
     expect((await t.run(ctx=>ctx.db.query("invoices").collect())).length).toBe(1);
+    // the stored copy may list keys in another order than the retry (the database sorts them)
+    await t.run(async ctx=>{const d=(await ctx.db.query("invoices").first())!;
+      await ctx.db.patch(d._id,{items:d.items.map(i=>Object.fromEntries(Object.entries(i).reverse())) as any});});
+    await t.mutation(api.invoices.push,args);
   });
   it("refuses to overwrite a different invoice that reuses a number, yet still lets its state change",async()=>{
     const {t,login}=await setup();
