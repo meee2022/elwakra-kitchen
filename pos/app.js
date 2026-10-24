@@ -461,7 +461,7 @@ async function writeInvoice(print, type) {
   const rule = db.settings.printSize === 'thermal' ? 'roll' : 'size:A5;margin:7mm';
   if (ANDROID && print && db.settings.kitchenTicket) {
     // The tablet has one printer and a second pop-up would be blocked: one tab, ticket then invoice.
-    printDoc(`<section class="pg">${kitchenHTML(inv)}</section>` + twoCopies(inv), KITCHEN_CSS + INVOICE_CSS, rule);
+    printDoc([kitchenHTML(inv), ...twoCopies(inv)], KITCHEN_CSS + INVOICE_CSS, rule);
     return;
   }
   if (db.settings.kitchenTicket) await printKitchen(inv);
@@ -469,8 +469,9 @@ async function writeInvoice(print, type) {
 }
 
 // A sale prints the invoice twice: one for the customer, one kept by the restaurant.
+// Each is its own page (desktop) or its own print job (tablet), so the printer cuts between them.
 const twoCopies = inv => [['نسخة العميل', 'Customer copy'], ['نسخة المحل', 'Shop copy']]
-  .map(([ar, en]) => `<section class="pg"><div class="inv-copy">${ar} · ${en}</div>${invoiceHTML(inv)}</section>`).join('');
+  .map(([ar, en]) => `<div class="inv-copy">${ar} · ${en}</div>${invoiceHTML(inv)}`);
 
 /* The payment method is asked for on every sale, so the cash and card totals can be trusted. */
 let payPrint = false;
@@ -629,29 +630,39 @@ function invoiceHTML(inv, opts = {}) {
    document opens in its own tab that prints itself once loaded, with a Print button for a retry.
    RawBT trims the blank paper ("Squeeze images") and cuts at the end of the job. */
 const ANDROID = /Android/i.test(navigator.userAgent);
-function printInTab(bodyHTML, css, pageRule) {
-  const w = window.open('', '_blank');
+/* Several documents (kitchen ticket, customer and shop copies) go out as separate jobs, one after
+   another: RawBT cuts only at the end of a job, and ignores its "cut between pages" option. On that
+   tablet print() returns only once the dialog is closed, so the next job starts right after. */
+function printInTab(parts, css, pageRule) {
+  const w = window.open('', 'stdk-print');   // one print tab, reused, not a new tab per print
   if (!w) {
     toast(t('المتصفح منع فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة لهذا الموقع، أو اطبع من «الفواتير».'), 'err');
     return Promise.resolve();
   }
+  w.document.open();
   w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1"><title>STDK</title><style>
     *{box-sizing:border-box} body{margin:0;background:#fff;
       font-family:"Segoe UI",Tahoma,Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     ${pageRule === 'roll' ? '' : `@page{${pageRule}}`}
     ${css}
-    @media print{.pd-print{display:none!important}}</style></head><body>${bodyHTML}
-    <button class="pd-print" onclick="print()" style="position:fixed;top:12px;left:12px;z-index:9;padding:12px 20px;border:0;
+    @media print{.pd-print{display:none!important}}</style></head><body><div id="doc"></div>
+    <button class="pd-print" onclick="run()" style="position:fixed;top:12px;left:12px;z-index:9;padding:12px 20px;border:0;
       border-radius:12px;background:#943B25;color:#fff;font:700 16px sans-serif">طباعة · Print</button>
-    <script>addEventListener('load',function(){(document.fonts?document.fonts.ready:Promise.resolve())
-      .then(function(){setTimeout(function(){print()},300)})})<\/script></body></html>`);
+    <script>var P=${JSON.stringify([].concat(parts)).replace(/</g, '\\u003c')},i=0;
+    function next(){if(i>=P.length)return;document.getElementById('doc').innerHTML=P[i++];
+      Promise.all([document.fonts?document.fonts.ready:0].concat([].map.call(document.images,function(m){
+        return m.complete?0:new Promise(function(r){m.onload=m.onerror=r})}))).then(function(){
+        setTimeout(function(){print();setTimeout(next,500)},300)})}
+    function run(){i=0;next()}
+    addEventListener('load',run)<\/script></body></html>`);
   w.document.close();
-  return Promise.resolve();   // no closing on afterprint: on Android print() returns at once and closing kills the job
+  return Promise.resolve();   // never close the tab from here: closing it kills a job still being sent
 }
 
 function printDoc(bodyHTML, css, pageRule) {
   if (ANDROID) return printInTab(bodyHTML, css, pageRule);
+  if (Array.isArray(bodyHTML)) bodyHTML = bodyHTML.map(b => `<section class="pg">${b}</section>`).join('');
   return new Promise(done => {
   const f = document.createElement('iframe');
   f.setAttribute('aria-hidden', 'true');
