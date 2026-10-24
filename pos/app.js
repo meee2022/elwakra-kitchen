@@ -130,10 +130,12 @@ function normalize() {
   const offered = db.settings.offeredProducts || [];
   for (const name of ADDED_PRODUCTS.filter(n => !offered.includes(n))) {
     const i = DEFAULT_PRODUCTS.findIndex(p => p.ar === name);
-    if (!db.products.some(p => p.ar === name)) {
+    const renamed = db.products.find(p => p.id === DEFAULT_PRODUCTS[i].id);   // same fixed id, new name
+    if (renamed) Object.assign(renamed, DEFAULT_PRODUCTS[i]);
+    if (renamed || !db.products.some(p => p.ar === name)) {
       const before = db.products.findIndex(p => p.ar === (DEFAULT_PRODUCTS[i - 1] || {}).ar);   // keep it next to its sibling
-      const item = { id: uid(), active: 1, ...DEFAULT_PRODUCTS[i] };
-      db.products.splice(before < 0 ? db.products.length : before + 1, 0, item);
+      const item = renamed || { id: uid(), active: 1, ...DEFAULT_PRODUCTS[i] };
+      if (!renamed) db.products.splice(before < 0 ? db.products.length : before + 1, 0, item);
       // share it through the menu sync once it starts (managers upload, see Sync.menuChanged)
       const sc = db.settings.sync || (db.settings.sync = {});
       sc.menuOps = [...(sc.menuOps || []), { op: 'upsert', item, after: (db.products[before] || {}).id }];
