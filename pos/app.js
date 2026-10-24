@@ -261,8 +261,10 @@ $('#catTabs').addEventListener('click', e => {
 });
 $('#prodSearch').addEventListener('input', renderProdGrid);
 
-/* Items ordered most in the last 30 days come first. Counted once a day, so buttons do not move
-   under the cashier's finger after every sale. */
+/* The owner's staples always lead, in this order; the rest follow by how much was ordered in the
+   last 30 days. Counted once a day, so buttons do not move under the cashier's finger after every sale. */
+const PINNED = ['مكبوس لحم', 'مكبوس دجاج', 'برياني لحم', 'برياني دجاج', 'هريس لحم (كبير)', 'صالونة لحم', 'صالونة دجاج', 'هريس لحم (صغير)'];
+const rank = p => { const i = PINNED.indexOf(p.ar); return i < 0 ? PINNED.length : i; };
 let popular = { day: '', count: {} };
 function popularity() {
   const day = new Date().toDateString();
@@ -280,7 +282,7 @@ function renderProdGrid() {
   const list = db.products.filter(p =>
     p.active &&
     (q ? (p.ar.toLowerCase().includes(q) || (p.en || '').toLowerCase().includes(q)) : p.cat === activeCat)
-  ).sort((x, y) => (count[y.ar] || 0) - (count[x.ar] || 0));   // stable: ties keep the menu order
+  ).sort((x, y) => rank(x) - rank(y) || (count[y.ar] || 0) - (count[x.ar] || 0));   // stable: ties keep the menu order
   $('#productCount').textContent = `${list.length} ${t('صنف')}`;
   $('#prodGrid').innerHTML = list.length ? list.map(p => `
     <button class="prod" data-id="${p.id}" aria-label="${esc(I18n.itemName(p))} ${money(p.price)}">
