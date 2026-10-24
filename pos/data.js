@@ -34,7 +34,7 @@ const DEFAULT_SETTINGS = {
 /* الأصناف — cat: meals (وجبات) | banquet (ولائم) | extra (إضافات)
    price بالريال القطري · weight بالجرام · state: طازج/مجمد · origin: المنشأ */
 /* Added after devices were already set up: normalize() offers each to existing devices once. */
-const ADDED_PRODUCTS = ['وجبة سمك', 'صالونة ربيان', 'صالونة لحم', 'صالونة دجاج', 'وجبة دجاج', 'وجبة لحم أسترالي', 'خروف صغير', 'خروف وسط', 'نص خروف (برياني أو خصوصي)'];
+const ADDED_PRODUCTS = ['وجبة سمك', 'صالونة ربيان', 'صالونة لحم', 'صالونة دجاج', 'وجبة دجاج', 'وجبة لحم أسترالي', 'خروف صغير', 'خروف وسط', 'نص خروف (برياني أو خصوصي)', 'نص خروف (مكبوس أو عيش أبيض)'];
 
 const DEFAULT_PRODUCTS = [
   // ---------- منيو الوجبات ----------
@@ -84,6 +84,7 @@ const DEFAULT_PRODUCTS = [
   { ar: 'طبخ الخروف برياني',                 en: 'Biryani Kharoof',             cat: 'banquet', price: 500,  weight: 0, state: '', origin: '' },
   // fixed id: every manager device offers it, and the menu sync must see one item, not one per device
   { id: 'half-kharoof', ar: 'نص خروف (برياني أو خصوصي)', en: 'Half Kharoof (Biryani / Special)', cat: 'banquet', price: 250, weight: 0, state: '', origin: '' },
+  { id: 'half-kharoof-magbus', ar: 'نص خروف (مكبوس أو عيش أبيض)', en: 'Half Kharoof (Magbus / Aish Abiad)', cat: 'banquet', price: 200, weight: 0, state: '', origin: '' },
   { ar: 'طبخ تيس (برياني - مكبوس)',          en: 'Tais (Biryani / Magbus)',     cat: 'banquet', price: 350,  weight: 0, state: '', origin: '' },
   { ar: 'طبخ سنام حوار مكبوس',               en: 'Sanam Hawar Magbus',          cat: 'banquet', price: 650,  weight: 0, state: '', origin: '' },
   { ar: 'طبخ سنام حوار عيش أبيض',            en: 'Sanam Hawar Aish Abiad',      cat: 'banquet', price: 600,  weight: 0, state: '', origin: '' },
