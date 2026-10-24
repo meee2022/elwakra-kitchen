@@ -305,13 +305,29 @@ $('#prodGrid').addEventListener('click', e => {
   if (b) addToCart(b.dataset.id);
 });
 
-function addToCart(id) {
+// Items cooked the way the customer picks: the choice is part of the line, so it shows on the
+// invoice and the kitchen ticket.
+const COOK_STYLES = { 'cook-own-fish': [['مقلي', 'Fried'], ['مشوي', 'Grilled'], ['صالونة', 'Salona'],
+  ['مكبوس', 'Magbus'], ['برياني', 'Biryani'], ['عيش أحمر', 'Aish Ahmar']] };
+function addToCart(id, style) {
   const p = db.products.find(x => x.id === id);
   if (!p) return;
-  const line = cart.find(l => l.id === id);
+  if (COOK_STYLES[id] && !style) return askStyle(p);
+  const ar = style ? `${p.ar} — ${style[0]}` : p.ar, en = style ? `${p.en || ''} — ${style[1]}` : p.en || '';
+  const line = cart.find(l => l.id === id && l.ar === ar);
   if (line) line.qty++;
-  else cart.push({ id, ar: p.ar, en: p.en || '', price: Number(p.price) || 0, qty: 1 });
+  else cart.push({ id, ar, en, price: Number(p.price) || 0, qty: 1 });
   renderCart();
+}
+function askStyle(p) {
+  $('#choiceTitle').textContent = I18n.itemName(p);
+  $('#choiceList').innerHTML = COOK_STYLES[p.id].map(([ar, en], i) =>
+    `<button class="choice" type="button" data-s="${i}"><b>${ar}</b><small>${en}</small></button>`).join('');
+  $('#choiceList').onclick = e => {
+    const b = e.target.closest('[data-s]');
+    if (b) { closeModals(); addToCart(p.id, COOK_STYLES[p.id][+b.dataset.s]); }
+  };
+  $('#choiceModal').classList.add('open');
 }
 
 function renderCart() {

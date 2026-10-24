@@ -359,6 +359,8 @@ const I18N = {
   /* Tablet printing */
   'المتصفح منع فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة لهذا الموقع، أو اطبع من «الفواتير».': 'The browser blocked the print window. Allow pop-ups for this site, or print from Invoices.',
 
+  'طريقة الطبخ': 'How to cook it',
+
   /* Shift close */
   'إغلاق الوردية': 'Close Shift',
   'طباعة وإغلاق الوردية': 'Print & Close Shift',

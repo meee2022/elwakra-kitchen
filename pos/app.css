@@ -820,3 +820,15 @@ tbody tr:nth-child(even) td{background:#FAF4EE}
 .edit-banner{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:9px 14px;
   background:var(--warn-bg);color:var(--warn);border-bottom:1px solid #EFDFC0;font-weight:700;font-size:13px}
 .edit-banner[hidden]{display:none}
+
+/* Cooking style picker */
+.choice-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.choice{display:flex;flex-direction:column;align-items:center;gap:2px;padding:16px 8px;border:1px solid var(--border);
+  border-radius:16px;background:var(--card);font:inherit;color:inherit;cursor:pointer;
+  box-shadow:var(--sh-card);transition:transform .2s var(--ease),box-shadow .2s var(--ease)}
+.choice b{font-size:17px}
+.choice small{font-size:12px;color:var(--muted)}
+.choice:hover{transform:translateY(-2px);box-shadow:var(--sh-hover)}
+.choice:active{transform:translateY(0) scale(.98)}
+.choice:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.choice{transition:none}}
