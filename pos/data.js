@@ -34,7 +34,7 @@ const DEFAULT_SETTINGS = {
 /* الأصناف — cat: meals (وجبات) | banquet (ولائم) | extra (إضافات)
    price بالريال القطري · weight بالجرام · state: طازج/مجمد · origin: المنشأ */
 /* Added after devices were already set up: normalize() offers each to existing devices once. */
-const ADDED_PRODUCTS = ['وجبة سمك', 'صالونة ربيان', 'صالونة لحم', 'صالونة دجاج', 'وجبة دجاج', 'وجبة لحم أسترالي', 'خروف صغير', 'خروف وسط', 'نص خروف (برياني أو خصوصي)', 'نص خروف (مكبوس أو عيش أبيض)', 'كرتون دجاج خصوصي الجنوب (الدجاج من المطبخ)', 'دجاجة من المطبخ (مكبوس / برياني / خصوصي / عيش أبيض)', 'دجاجة من الزبون (مكبوس / برياني / عيش أبيض)', 'دجاجة من الزبون (برياني هندي / خصوصي الجنوب)'];
+const ADDED_PRODUCTS = ['وجبة سمك', 'صالونة ربيان', 'صالونة لحم', 'صالونة دجاج', 'وجبة دجاج', 'وجبة لحم أسترالي', 'خروف صغير', 'خروف وسط', 'نص خروف (برياني أو خصوصي)', 'نص خروف (مكبوس أو عيش أبيض)', 'كرتون دجاج خصوصي الجنوب (الدجاج من المطبخ)', 'دجاجة من المطبخ (مكبوس / برياني / خصوصي / عيش أبيض)', 'دجاجة من الزبون (مكبوس / برياني / عيش أبيض)', 'دجاجة من الزبون (برياني هندي / خصوصي الجنوب)', 'طبخ سمك الزبون (بالكيلو)'];
 
 const DEFAULT_PRODUCTS = [
   // ---------- منيو الوجبات ----------
@@ -46,6 +46,8 @@ const DEFAULT_PRODUCTS = [
   { ar: 'برياني ربيان',              en: 'Robiyan Biryani',           cat: 'meals', price: 50, weight: 1000, state: 'مجمد', origin: 'كندا' },
   { ar: 'سمك مقلي + عيش أبيض',       en: 'Fried Samak + Aish Abiad',  cat: 'meals', price: 40, weight: 1000, state: 'طازج', origin: 'محلي' },
   { ar: 'سمك مشوي + عيش أبيض',       en: 'Aish Abiad Samak Mashwi',   cat: 'meals', price: 50, weight: 1000, state: 'طازج', origin: 'محلي' },
+  // priced per kilo: the quantity is the weight (1.5 = 1.5 kg)
+  { id: 'cook-own-fish', ar: 'طبخ سمك الزبون (بالكيلو)', en: "Cooking customer's fish (per kg)", cat: 'meals', price: 40, weight: 0, state: '', origin: '' },
   { ar: 'جشيد + عيش أبيض',           en: 'Gesheed + Aish Abiad',      cat: 'meals', price: 40, weight: 900,  state: 'طازج', origin: 'محلي' },
   { ar: 'مشخول تونة',                en: 'Mashkhoul Tuna',            cat: 'meals', price: 40, weight: 900,  state: 'طازج', origin: 'محلي' },
   { ar: 'صالونة لحم + عيش أبيض',     en: 'Aish Abiad + Salona Laham', cat: 'meals', price: 55, weight: 1200, state: 'طازج', origin: 'استرالي' },

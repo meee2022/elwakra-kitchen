@@ -329,7 +329,7 @@ function renderCart() {
           ${alt ? `<div class="ci-en">${alt}</div>` : ''}
           <div class="ci-ctl" style="margin-top:5px">
             <button class="qtybtn" aria-label="${I18n.t2('تقليل كمية {0}', nm)}" data-act="dec" data-i="${i}">−</button>
-            <input class="qty" aria-label="${I18n.t2('كمية {0}', nm)}" type="number" min="1" step="1" value="${l.qty}" data-act="qty" data-i="${i}">
+            <input class="qty" aria-label="${I18n.t2('كمية {0}', nm)}" type="number" min="0.25" step="0.25" value="${l.qty}" data-act="qty" data-i="${i}">
             <button class="qtybtn" aria-label="${I18n.t2('زيادة كمية {0}', nm)}" data-act="inc" data-i="${i}">+</button>
             <span class="muted" style="font-size:11px">×</span>
             <input class="pr" aria-label="${I18n.t2('سعر {0}', nm)}" type="number" min="0" step="0.25" value="${l.price}" data-act="price" data-i="${i}">
@@ -348,7 +348,7 @@ $('#cartItems').addEventListener('click', e => {
   if (!b) return;
   const i = +b.dataset.i;
   if (b.dataset.act === 'inc') cart[i].qty++;
-  else if (b.dataset.act === 'dec') { cart[i].qty--; if (cart[i].qty < 1) cart.splice(i, 1); }
+  else if (b.dataset.act === 'dec') { cart[i].qty--; if (cart[i].qty <= 0) cart.splice(i, 1); }
   else if (b.dataset.act === 'rm') cart.splice(i, 1);
   else return;
   renderCart();
@@ -357,7 +357,8 @@ $('#cartItems').addEventListener('change', e => {
   const b = e.target.closest('[data-act]');
   if (!b) return;
   const i = +b.dataset.i;
-  if (b.dataset.act === 'qty') { cart[i].qty = Math.max(1, Math.floor(+b.value || 1)); }
+  // fractions allowed for items sold by weight (e.g. fish by the kilo), in quarters
+  if (b.dataset.act === 'qty') { cart[i].qty = Math.max(0.25, Math.round((+b.value || 1) * 4) / 4); }
   else if (b.dataset.act === 'price') { cart[i].price = Math.max(0, +b.value || 0); }
   renderCart();
 });
