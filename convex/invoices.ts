@@ -125,6 +125,21 @@ export const verify = query({
   },
 });
 
+/** One day's takings across every device, for the end-of-day message to the owner. Totals only,
+    so the cashier who closes the day can send it; the detailed reports stay with managers. */
+export const daySummary = query({
+  args: { token: v.optional(v.string()), date: v.string() },
+  handler: async (ctx, args) => {
+    await requireSession(ctx, args.token);
+    const rows = await ctx.db.query("invoices").withIndex("by_date", (q) => q.eq("date", args.date)).collect();
+    const active = rows.filter((r) => r.status === "active");
+    const sum = (list: typeof rows) => list.reduce((n, r) => n + r.total, 0);
+    return { date: args.date, count: active.length, voids: rows.length - active.length,
+      cash: sum(active.filter((r) => r.type === "cash")), card: sum(active.filter((r) => r.type === "card")),
+      credit: sum(active.filter((r) => r.type === "credit")), deposits: sum(active.filter((r) => r.booking)), total: sum(active) };
+  },
+});
+
 /** Bookings still to come, for every signed-in account: deposit invoices with an event that are
     active, not closed by a manager, and not yet followed by their final invoice. */
 export const bookings = query({

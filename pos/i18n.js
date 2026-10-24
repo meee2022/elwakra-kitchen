@@ -387,6 +387,9 @@ const I18N = {
   'تنفيذ حجز {0} — العربون {1} يُخصم عند الحفظ': 'Carrying out the booking for {0}: the deposit {1} is taken off on saving',
   'فواتير الحجز لا تُعدَّل — ألغِ الحجز وسجّله من جديد.': 'Booking invoices cannot be edited. Cancel the booking and book again.',
 
+  'إرسال مبيعات اليوم للمالك': "Send today's sales to the owner",
+  'تعذّر الاتصال — مبيعات اليوم تحتاج الإنترنت.': "Could not connect. Today's sales need the internet.",
+
   /* Shift close */
   'إغلاق الوردية': 'Close Shift',
   'طباعة وإغلاق الوردية': 'Print & Close Shift',

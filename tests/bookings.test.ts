@@ -24,6 +24,18 @@ const deposit={...base,uid:"dep-1",no:1,hash:"d1",items:[{ar:"Deposit",en:"Depos
 // The final invoice on the event day: the whole order less the deposit.
 const final={...base,uid:"fin-1",no:2,hash:"f1",date:"2026-10-27",items:planned,subtotal:3500,total:1500,deposit:2000,depositNo:1,depositUid:"dep-1"};
 
+describe("end-of-day takings",()=>{
+  it("totals one day across devices for any account, deposits included",async()=>{
+    const {t,manager,cashier}=await setup();
+    await t.mutation(api.invoices.push,{token:cashier,invoices:[deposit,{...base,uid:"c-1",no:5,hash:"c1",type:"card",items:[{ar:"A",en:"A",qty:2,price:30}],subtotal:60,total:60}]});
+    await t.mutation(api.invoices.push,{token:manager,invoices:[{...base,uid:"m-1",no:6,hash:"m1",status:"void",items:[{ar:"A",en:"A",qty:1,price:30}],subtotal:30,total:30},
+      {...base,uid:"old",no:7,hash:"o1",date:"2026-10-23",items:[{ar:"A",en:"A",qty:1,price:99}],subtotal:99,total:99}]});
+    const day=await t.query(api.invoices.daySummary,{token:cashier,date:"2026-10-24"});
+    expect(day).toEqual({date:"2026-10-24",count:2,voids:1,cash:2000,card:60,credit:0,deposits:2000,total:2060});
+    await expect(t.query(api.invoices.daySummary,{date:"2026-10-24"})).rejects.toThrow("AUTH_REQUIRED");
+  });
+});
+
 describe("bookings with a deposit",()=>{
   it("lets a cashier take a deposit and lists the booking for every account",async()=>{
     const {t,manager,cashier}=await setup();

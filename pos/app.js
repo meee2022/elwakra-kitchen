@@ -1239,6 +1239,19 @@ $('#btnShift').addEventListener('click', () => {
       <td style="padding:9px 0">${t(ar)}</td><td style="text-align:end">${ltr(shiftValue(s, k))}</td></tr>`).join('')}</table>`;
   $('#shiftModal').classList.add('open');
 });
+// The whole day from every device, as a message the cashier sends to the owner (WhatsApp or any app
+// the device offers). Sending stays a human tap: nothing goes out on its own.
+$('#btnDayToOwner').addEventListener('click', async () => {
+  let d;
+  try { d = await Sync.call('invoices:daySummary', { date: todayISO() }); }
+  catch (e) { return toast(t('تعذّر الاتصال — مبيعات اليوم تحتاج الإنترنت.'), 'err'); }
+  const text = [`${db.settings.nameAr || ''} — مبيعات يوم ${fmtDate(d.date)}`,
+    `عدد الفواتير: ${d.count}`, `نقداً: ${money(d.cash)}`, `بطاقة: ${money(d.card)}`, `على الحساب: ${money(d.credit)}`,
+    ...(d.deposits ? [`منها عرابين حجوزات: ${money(d.deposits)}`] : []), `ملغاة: ${d.voids}`,
+    `الإجمالي: ${money(d.total)} ر.ق`].join('\n');
+  if (navigator.share) { try { await navigator.share({ text }); } catch (e) { /* closed without sending */ } }
+  else window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+});
 $('#btnShiftClose').addEventListener('click', () => {
   const s = shiftSummary();
   printDoc(shiftHTML(s), SHIFT_CSS, 'roll');
