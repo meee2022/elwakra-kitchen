@@ -24,6 +24,20 @@ const deposit={...base,uid:"dep-1",no:1,hash:"d1",items:[{ar:"Deposit",en:"Depos
 // The final invoice on the event day: the whole order less the deposit.
 const final={...base,uid:"fin-1",no:2,hash:"f1",date:"2026-10-27",items:planned,subtotal:3500,total:1500,deposit:2000,depositNo:1,depositUid:"dep-1"};
 
+describe("zeroing the invoices",()=>{
+  it("tells every signed-in device when, and only a manager can do it",async()=>{
+    const {t,manager,cashier}=await setup();
+    await t.mutation(api.invoices.push,{token:cashier,invoices:[deposit]});
+    expect(await t.query(api.admin.lastWipe,{token:cashier})).toBeNull();
+    await expect(t.query(api.admin.lastWipe,{token:""})).rejects.toThrow("AUTH_REQUIRED");
+    await expect(t.mutation(api.admin.wipeAll,{token:cashier,confirm:"امسح كل الفواتير"})).rejects.toThrow("FORBIDDEN");
+    const {deleted,at}=await t.mutation(api.admin.wipeAll,{token:manager,confirm:"امسح كل الفواتير"});
+    expect(deleted).toBe(1);
+    expect(await t.query(api.admin.lastWipe,{token:cashier})).toBe(at);
+    expect((await t.query(api.invoices.changes,{token:manager,since:0})).rows).toEqual([]);
+  });
+});
+
 describe("end-of-day takings",()=>{
   it("totals one day across devices for any account, deposits included",async()=>{
     const {t,manager,cashier}=await setup();

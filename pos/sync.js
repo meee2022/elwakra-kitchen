@@ -167,12 +167,27 @@ const Sync = (function () {
     }
   }
 
+  /** The invoices were zeroed from a manager's device: drop this device's copy and restart the numbering.
+      Runs before any upload so old invoices cannot return. Sales made after the wipe are kept. */
+  async function followWipe() {
+    const at = await call('admin:lastWipe', {});
+    if (!at || at === cfg().wipedAt) return;
+    db.invoices = db.invoices.filter(v => Date.parse(v.createdAt) > at);
+    db.settings.nextInvoiceNo = db.invoices.reduce((n, v) => Math.max(n, v.no + 1), 1);
+    db.settings.shiftStart = '';
+    cfg().wipedAt = at;
+    cfg().pulledAt = 0;
+    await flush();
+    dispatchEvent(new Event('invoices-pulled'));
+  }
+
   async function doRun(manual) {
     if (!navigator.onLine) { render('offline'); return; }
 
-    const queue = pending();
-    if (queue.length) render('working');
     try {
+      await followWipe();
+      const queue = pending();
+      if (queue.length) render('working');
       for (let i = 0; i < queue.length; i += BATCH) {
         const chunk = queue.slice(i, i + BATCH);
         await call('invoices:push', { invoices: chunk.map(forWire) }, 'mutation');
