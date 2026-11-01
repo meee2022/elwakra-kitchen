@@ -1757,6 +1757,22 @@ $('#restoreFile').addEventListener('change', e => {
   };
   rd.readAsText(f);
 });
+// One-off for the switch from trial to real work: invoices go, items, accounts and settings stay.
+$('#btnWipeCloud').addEventListener('click', async () => {
+  const phrase = 'امسح كل الفواتير';
+  const typed = prompt(I18n.t2('سيتم مسح كل الفواتير من السحابة وهذا الجهاز نهائياً. الأصناف والحسابات والإعدادات تبقى.\nللتأكيد اكتب: {0}', phrase));
+  if (typed === null) return;
+  if (typed.trim() !== phrase) { toast(t('النص غير مطابق — لم يُمسح شيء'), 'err'); return; }
+  try {
+    const { deleted } = await Sync.call('admin:wipeAll', { confirm: phrase }, 'mutation');
+    db.invoices = [];
+    db.settings.nextInvoiceNo = 95099;
+    db.settings.shiftStart = '';
+    await flush();
+    toast(I18n.t2('تم مسح {0} فاتورة من السحابة', deleted), 'ok');
+    setTimeout(() => location.reload(), 1200);
+  } catch (err) { toast(t('تعذّر المسح — لم يُمسح شيء من هذا الجهاز: ') + err.message, 'err'); }
+});
 $('#btnWipe').addEventListener('click', () => {
   if (!confirm(t('سيتم مسح كل الفواتير والأصناف والإعدادات نهائياً.\nهل أخذت نسخة احتياطية؟'))) return;
   if (!confirm(t('تأكيد أخير: مسح كل البيانات؟'))) return;

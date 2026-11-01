@@ -309,6 +309,11 @@ const I18N = {
   'سيتم مسح كل الفواتير والأصناف والإعدادات نهائياً.\nهل أخذت نسخة احتياطية؟':
     'This will permanently erase all invoices, items and settings.\nHave you taken a backup?',
   'تأكيد أخير: مسح كل البيانات؟': 'Final confirmation: erase all data?',
+  'تصفير كل الفواتير من السحابة وهذا الجهاز': 'Zero all invoices in the cloud and on this device',
+  'سيتم مسح كل الفواتير من السحابة وهذا الجهاز نهائياً. الأصناف والحسابات والإعدادات تبقى.\nللتأكيد اكتب: {0}': 'All invoices in the cloud and on this device will be erased for good. Items, accounts and settings stay.\nTo confirm, type: {0}',
+  'النص غير مطابق — لم يُمسح شيء': 'The text does not match. Nothing was erased.',
+  'تم مسح {0} فاتورة من السحابة': '{0} invoices erased from the cloud',
+  'تعذّر المسح — لم يُمسح شيء من هذا الجهاز: ': 'Could not erase. Nothing was erased on this device: ',
   'تم نقل بياناتك إلى قاعدة البيانات المحلية': 'Your data was moved to the local database',
   'تعذّر حفظ البيانات — اعمل نسخة احتياطية فوراً وأعد تشغيل المتصفح.':
     'Could not save data — take a backup now and restart the browser.',
