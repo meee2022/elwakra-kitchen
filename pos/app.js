@@ -1766,7 +1766,7 @@ $('#btnWipeCloud').addEventListener('click', async () => {
   try {
     const { deleted } = await Sync.call('admin:wipeAll', { confirm: phrase }, 'mutation');
     db.invoices = [];
-    db.settings.nextInvoiceNo = 95099;
+    db.settings.nextInvoiceNo = 1;
     db.settings.shiftStart = '';
     await flush();
     toast(I18n.t2('تم مسح {0} فاتورة من السحابة', deleted), 'ok');
