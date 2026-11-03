@@ -43,6 +43,10 @@ function fingerprint(str) {
   return h.toString(36).toUpperCase().padStart(7, '0').slice(0, 7);
 }
 
+// The printed check code: number, date, time, total and items.
+const invoiceHash = inv => fingerprint([inv.uid, inv.date, inv.time, money(inv.total), inv.items.length,
+  inv.items.map(i => i.ar + i.qty + i.price).join('|')].join('~'));
+
 /* ══════════════ تفقيط المبلغ بالحروف ══════════════ */
 const _ONES = ['', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة', 'عشرة',
   'أحد عشر', 'اثنا عشر', 'ثلاثة عشر', 'أربعة عشر', 'خمسة عشر', 'ستة عشر', 'سبعة عشر', 'ثمانية عشر', 'تسعة عشر'];
@@ -463,8 +467,7 @@ async function writeInvoice(print, type, booking) {
     }
   };
   inv.uid = `STDK-${(s.crNumber || '').replace(/\D/g, '')}-${inv.no}-${inv.date.replace(/-/g, '')}`;
-  inv.hash = fingerprint([inv.uid, inv.date, inv.time, money(inv.total), inv.items.length,
-    inv.items.map(i => i.ar + i.qty + i.price).join('|')].join('~'));
+  inv.hash = invoiceHash(inv);
 
   inv._createdBy = Auth.profile().username;
   Sync.mark(inv);

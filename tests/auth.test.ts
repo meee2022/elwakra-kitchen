@@ -159,11 +159,11 @@ describe("account management",()=>{
   });
 });
 
-describe("manager mirror of the cloud",()=>{
+describe("every device mirrors the cloud",()=>{
   const inv=(n:number,over:object={})=>({...invoice,uid:"m-"+n,no:n,hash:"h"+n,...over});
-  it("is closed to cashiers and to callers without a session",async()=>{
+  it("is open to cashiers and closed to callers without a session",async()=>{
     const {t,login}=await setup("cashier");
-    await expect(t.query(api.invoices.changes,{token:login.token,since:0})).rejects.toThrow("FORBIDDEN");
+    expect((await t.query(api.invoices.changes,{token:login.token,since:0})).rows).toEqual([]);
     await expect(t.query(api.invoices.changes,{token:"0".repeat(64),since:0})).rejects.toThrow("AUTH_REQUIRED");
   });
   it("returns only what arrived or changed after the given moment, without server fields",async()=>{

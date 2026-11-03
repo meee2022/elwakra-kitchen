@@ -72,32 +72,50 @@ const Sync = (function () {
     return inFlight;
   }
 
-  /** Managers mirror the cloud: sales made on any device appear here on their own, and cancelling
+  /** Every device mirrors the cloud: sales made on any device appear here on their own, and cancelling
       or collecting elsewhere follows. Nothing local is ever removed. Returns how many invoices changed. */
   async function pull() {
-    if (!Auth.isManager()) return 0;
     let changed = 0;
+    const clashes = [];
     for (let more = true; more;) {
       const got = await call('invoices:changes', { since: cfg().pulledAt || 0 });
       for (const inv of got.rows) {
         const mine = db.invoices.find(v => v.uid === inv.uid);
-        if (mine && (!mine._synced || mine._syncHash !== mine._stateHash)) continue;   // a local change not pushed yet wins
-        if (mine && stateHash(mine) === stateHash(inv)) continue;                      // our own push coming back
-        const fresh = { ...inv, _stateHash: stateHash(inv), _syncHash: stateHash(inv), _synced: true };
-        if (mine) Object.assign(mine, fresh); else db.invoices.push(fresh);
+        if (mine && (!mine._synced || mine._syncHash !== mine._stateHash)) {
+          if (mine.hash === inv.hash) continue;   // a local change not pushed yet wins
+          clashes.push(mine);                      // another device issued this number first: ours moves
+        } else {
+          if (mine && stateHash(mine) === stateHash(inv)) continue;   // our own push coming back
+          if (mine) { Object.assign(mine, { ...inv, _stateHash: stateHash(inv), _syncHash: stateHash(inv), _synced: true }); changed++; continue; }
+        }
+        db.invoices.push({ ...inv, _stateHash: stateHash(inv), _syncHash: stateHash(inv), _synced: true });
         changed++;
       }
       if (got.rows.length) { cfg().pulledAt = got.next; save(); }
       more = got.more;
     }
     if (changed) {
-      db.invoices.sort((x, y) => y.no - x.no);
       // Keep this device's counter clear of numbers already issued elsewhere.
-      db.settings.nextInvoiceNo = Math.max(db.settings.nextInvoiceNo, db.invoices[0].no + 1);
+      db.settings.nextInvoiceNo = Math.max(db.settings.nextInvoiceNo, ...db.invoices.map(v => v.no + 1));
+      clashes.forEach(renumber);
+      db.invoices.sort((x, y) => y.no - x.no);
       save();
       dispatchEvent(new Event('invoices-pulled'));
     }
     return changed;
+  }
+
+  /** Two devices issued the same number: the one not yet uploaded takes the next free number and keeps
+      the printed one in its note, so the paper copy can still be matched. */
+  function renumber(v) {
+    const old = v.no;
+    v.no = db.settings.nextInvoiceNo++;
+    v.uid = v.uid.replace(/-\d+-(\d{8})$/, `-${v.no}-$1`);
+    v.hash = invoiceHash(v);
+    v.note = [v.note, I18n.t2('طُبعت برقم {0}', old)].filter(Boolean).join(' · ');
+    db.invoices.forEach(x => { if (x !== v && !x._synced && x.replacedBy === old) { x.replacedBy = v.no; mark(x); } });
+    mark(v);
+    toast(I18n.t2('رقم الفاتورة {0} صدر من جهاز آخر — سُجّلت هذه برقم {1}', old, v.no), 'err');
   }
 
   /* The shared menu (items, prices, establishment details): every device follows the cloud copy,
@@ -186,6 +204,8 @@ const Sync = (function () {
 
     try {
       await followWipe();
+      // Pull first: a number another device already used is moved aside before it can block the upload.
+      const pulled = await pull();
       const queue = pending();
       if (queue.length) render('working');
       for (let i = 0; i < queue.length; i += BATCH) {
@@ -195,7 +215,7 @@ const Sync = (function () {
         save();
       }
       await syncMenu();
-      const moved = queue.length + await pull();
+      const moved = queue.length + pulled;
       // This runs every few seconds for a manager: only touch storage when something happened.
       if (moved || db.settings.sync.lastError) {
         db.settings.sync.lastOk = new Date().toISOString();

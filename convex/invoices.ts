@@ -163,7 +163,7 @@ export const bookings = query({
 export const changes = query({
   args: { token: v.string(), since: v.number(), limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    await requireSession(ctx, args.token, true);
+    await requireSession(ctx, args.token);   // every device follows the cloud, so a till sees numbers used elsewhere
     const page = Math.min(Math.max(1, Math.floor(args.limit ?? 200)), 200);
     let rows = await ctx.db.query("invoices").withIndex("by_syncedAt", (q) => q.gt("syncedAt", args.since)).take(page);
     const more = rows.length === page;
