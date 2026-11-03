@@ -433,6 +433,9 @@ async function saveInvoice(print, type, booking) {
   try { await writeInvoice(print, type, booking); } finally { savingInvoice = false; }
 }
 async function writeInvoice(print, type, booking) {
+  // Catch up with the cloud first so the number is the next one across every device. Capped so a slow
+  // line never holds the sale (or the tap the printer needs); offline it goes on with this device's count.
+  if (navigator.onLine && Sync.configured()) await Promise.race([Sync.run(false), new Promise(r => setTimeout(r, 1500))]);
   const replacing = editingFrom && db.invoices.find(v => v.no === editingFrom.no && v.status === 'active');
   const paidNow = type !== 'credit';   // card and cash settle on the spot
   // A new booking issues only its deposit: one line for the amount, the planned order rides along.

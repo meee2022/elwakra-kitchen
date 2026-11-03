@@ -269,8 +269,8 @@ const Sync = (function () {
     db.invoices.forEach(v => { if (!v._stateHash) v._stateHash = stateHash(v); });
     render();
     clearInterval(timer);
-    // A manager follows sales as they happen; a till only needs to retry uploads.
-    timer = setInterval(() => { if (!document.hidden) run(false); }, Auth.isManager() ? 10000 : 60000);
+    // Every device follows the others every few seconds, so all of them show the same next number.
+    timer = setInterval(() => { if (!document.hidden) run(false); }, 10000);
     addEventListener('online', () => run(false));
     document.addEventListener('visibilitychange', () => { if (!document.hidden) run(false); });
     run(false);
